@@ -1,0 +1,85 @@
+<html lang="ru">
+<head>
+    <title>Заявка № {{ .calc.ID }} — Расчёт износа</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="header-container">
+            <a href="/" class="logo-block">
+                <img src="/static/img/logo.png" alt="BrakePad" class="logo-img">
+                <span class="logo-text"></span>
+            </a>
+    
+            <form action="/" method="GET" class="search-form">
+                <div class="search-input-wrapper">
+                    <input type="text"
+                           name="query"
+                           class="search-input"
+                           placeholder="Поиск по типу колодок..."
+                           value="{{ .query }}">
+                </div>
+                <button type="submit" class="search-btn" aria-label="Поиск"></button>
+            </form>
+        </div>
+    </header>
+
+<div class="calculation-detail">
+
+    <a href="/" class="back-link">← Вернуться к каталогу</a>
+
+    <div class="calculation-detail__header-card">
+        <h1 class="calculation-detail__title">
+            Заявка № {{ .calc.ID }}
+        </h1>
+
+        <div class="calculation-detail__info">
+            <div><strong>Стиль вождения:</strong> {{ .calc.DrivingStyle }}</div>
+            <div><strong>Пробег:</strong> {{ .calc.Mileage }} км</div>
+            <div><strong>Статус:</strong> {{ .calc.Status }}</div>
+        </div>
+
+        <div class="calculation-detail__result">
+            Остаточный ресурс:
+            <strong>
+                {{ printf "%.0f" .calc.ResultRemainingKM }} км
+                ({{ printf "%.1f" .calc.ResultPercent }}%)
+            </strong>
+        </div>
+    </div>
+
+    <table class="calc-table">
+        <thead>
+        <tr>
+            <th>Изображение</th>
+            <th>Тип колодок</th>
+            <th>Базовый ресурс</th>
+            <th>Комментарий</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{ range .calc.Pads }}
+        <tr>
+            <td>
+                <img src="http://localhost:9000/test/{{ .Pad.Image }}"
+                     alt="{{ .Pad.Title }}"
+                     onerror="this.src='/static/img/placeholder.svg'; this.onerror=null"
+                     class="calc-table__img">
+            </td>
+            <td>{{ .Pad.PadType }}</td>
+            <td>{{ .Pad.BaseResource }} км</td>
+            <td>
+                <textarea readonly class="comment-input" rows="2">
+{{ .Comment }}
+                </textarea>
+            </td>
+        </tr>
+        {{ end }}
+        </tbody>
+    </table>
+
+</div>
+
+</body>
+</html>
