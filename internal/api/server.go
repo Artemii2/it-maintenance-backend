@@ -30,6 +30,7 @@ func StartServer() {
 	r.GET("/strategies/:id", h.GetPad)
 	r.GET("/calculations/:id", h.GetCalculation)
 
-	r.Run()
+	// слушаем на всех интерфейсах, чтобы можно было открыть с телефона
+	r.Run("0.0.0.0:8080")
 	log.Println("Server down")
 }

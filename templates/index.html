@@ -47,7 +47,7 @@
     <div class="container">
         {{ range .strategies }}
         <a href="/strategies/{{ .ID }}" class="card">
-            <img src="http://localhost:9000/test/{{ .Image }}" alt="{{ .Title }}"
+            <img src="{{ $.minioBase }}/test/{{ .Image }}" alt="{{ .Title }}"
                  onerror="this.src='/static/img/placeholder.svg'; this.onerror=null"
                  class="card__image">
             <div class="card__body">

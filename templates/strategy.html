@@ -31,8 +31,8 @@
     <div class="detail-card">
         <div class="detail-card__image-col">
             <video class="detail-card__image"
-                   src="http://localhost:9000/test/{{ .strategy.Video }}"
-                   poster="http://localhost:9000/test/{{ .strategy.Image }}"
+                   src="{{ .minioBase }}/test/{{ .strategy.Video }}"
+                   poster="{{ .minioBase }}/test/{{ .strategy.Image }}"
                    autoplay
                    muted
                    loop

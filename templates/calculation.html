@@ -62,7 +62,7 @@
         {{ range .calc.Pads }}
         <tr>
             <td>
-                <img src="http://localhost:9000/test/{{ .Pad.Image }}"
+                <img src="{{ $.minioBase }}/test/{{ .Pad.Image }}"
                      alt="{{ .Pad.Title }}"
                      onerror="this.src='/static/img/placeholder.svg'; this.onerror=null"
                      class="calc-table__img">
