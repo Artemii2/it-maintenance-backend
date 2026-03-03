@@ -20,59 +20,56 @@
                            placeholder="Поиск по типу колодок..."
                            value="{{ .query }}">
                 </div>
-                <button type="submit" class="search-btn" aria-label="Поиск"></button>
+                <button type="submit" class="search-btn search-btn--icon" aria-label="Поиск"></button>
             </form>
         </div>
     </header>
 
 <div class="calculation-detail">
 
-    <a href="/" class="back-link">← Вернуться к каталогу</a>
 
     <div class="calculation-detail__header-card">
         <h1 class="calculation-detail__title">
-            Заявка № {{ .calc.ID }}
+            Заявка № {{ .app.ID }}
         </h1>
 
         <div class="calculation-detail__info">
-            <div><strong>Стиль вождения:</strong> {{ .calc.DrivingStyle }}</div>
-            <div><strong>Пробег:</strong> {{ .calc.Mileage }} км</div>
-            <div><strong>Статус:</strong> {{ .calc.Status }}</div>
+            <div><strong>Статус:</strong> {{ .app.Status }}</div>
+            <div><strong>Создана:</strong> {{ .app.CreatedAt }}</div>
+            {{ if .app.DrivingStyle }}<div><strong>Стиль вождения:</strong> {{ .app.DrivingStyle }}</div>{{ end }}
+            {{ if gt .app.Mileage 0 }}<div><strong>Пробег:</strong> {{ .app.Mileage }} км</div>{{ end }}
+            {{ if gt .app.TotalPrice 0 }}<div><strong>Итоговая стоимость:</strong> {{ .app.TotalPrice }} ₽</div>{{ end }}
         </div>
 
-        <div class="calculation-detail__result">
-            Остаточный ресурс:
-            <strong>
-                {{ printf "%.0f" .calc.ResultRemainingKM }} км
-                ({{ printf "%.1f" .calc.ResultPercent }}%)
-            </strong>
-        </div>
+        <form method="POST" action="/cart/delete" style="margin-top: 12px;">
+            <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">
+                Удалить заявку
+            </button>
+        </form>
     </div>
 
     <table class="calc-table">
         <thead>
         <tr>
             <th>Изображение</th>
-            <th>Тип колодок</th>
-            <th>Базовый ресурс</th>
+            <th>Услуга</th>
+            <th>Кол-во</th>
             <th>Комментарий</th>
         </tr>
         </thead>
         <tbody>
-        {{ range .calc.Pads }}
+        {{ range .app.Items }}
         <tr>
             <td>
-                <img src="{{ $.minioBase }}/test/{{ .Pad.Image }}"
-                     alt="{{ .Pad.Title }}"
+                <img src="{{ $.minioBase }}/test/{{ .Service.ImageURL }}"
+                     alt="{{ .Service.Title }}"
                      onerror="this.src='/static/img/placeholder.svg'; this.onerror=null"
                      class="calc-table__img">
             </td>
-            <td>{{ .Pad.PadType }}</td>
-            <td>{{ .Pad.BaseResource }} км</td>
+            <td>{{ .Service.Title }}</td>
+            <td>{{ .Quantity }}</td>
             <td>
-                <textarea readonly class="comment-input" rows="2">
-{{ .Comment }}
-                </textarea>
+                <textarea readonly class="comment-input" rows="2">{{ .Comment }}</textarea>
             </td>
         </tr>
         {{ end }}

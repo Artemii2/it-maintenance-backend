@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"database/sql"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,51 +15,61 @@ import (
 // Handler содержит зависимости HTTP-обработчиков.
 type Handler struct {
 	Repository *repository.Repository
+	SQL        *sql.DB
 }
 
 // NewHandler создаёт новый Handler с переданным репозиторием.
-func NewHandler(r *repository.Repository) *Handler {
+func NewHandler(r *repository.Repository, sqlDB *sql.DB) *Handler {
 	return &Handler{
 		Repository: r,
+		SQL:        sqlDB,
 	}
 }
 
-// GetPads — главная страница: список типов колодок + карточка заявки
-func (h *Handler) GetPads(ctx *gin.Context) {
-	var pads []repository.BrakePad
-	var err error
+func (h *Handler) currentUserID(ctx *gin.Context) uint {
+	if v, err := ctx.Cookie("uid"); err == nil && v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return uint(n)
+		}
+	}
+
+	// демо-авторизация: фиксируем пользователя 1
+	ctx.SetCookie("uid", "1", 60*60*24*365, "/", "", false, true)
+	return 1
+}
+
+func (h *Handler) minioBase(ctx *gin.Context) string {
+	host := ctx.Request.Host // например 192.168.1.10:8080
+	hostOnly := strings.Split(host, ":")[0]
+	return fmt.Sprintf("http://%s:9000", hostOnly)
+}
+
+// GetServices — главная страница: список услуг + карточка текущей заявки (черновик)
+func (h *Handler) GetServices(ctx *gin.Context) {
+	userID := h.currentUserID(ctx)
 
 	searchQuery := ctx.Query("query")
 
-	if searchQuery == "" {
-		pads, err = h.Repository.GetPads()
-	} else {
-		pads, err = h.Repository.GetPadsByTitle(searchQuery)
-	}
-
+	services, err := h.Repository.SearchServices(searchQuery)
 	if err != nil {
-		logrus.Error(err)
+		logrus.WithError(err).Error("services search error")
 	}
 
-	calculations, err := h.Repository.GetCalculations()
+	draft, err := h.Repository.GetDraftApplication(userID)
 	if err != nil {
-		logrus.Error(err)
+		logrus.WithError(err).Error("draft load error")
 	}
-
-	host := ctx.Request.Host // например 192.168.1.10:8080
-	hostOnly := strings.Split(host, ":")[0]
-	minioBase := fmt.Sprintf("http://%s:9000", hostOnly)
 
 	ctx.HTML(http.StatusOK, "index.html", gin.H{
-		"strategies":   pads, // оставляем имя чтобы не ломать шаблон
-		"query":        searchQuery,
-		"calculations": calculations,
-		"minioBase":    minioBase,
+		"services":  services,
+		"query":     searchQuery,
+		"draft":     draft,
+		"minioBase": h.minioBase(ctx),
 	})
 }
 
-// GetPad — страница конкретного типа колодок
-func (h *Handler) GetPad(ctx *gin.Context) {
+// GetService — страница конкретной услуги
+func (h *Handler) GetService(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 
 	id, err := strconv.Atoi(idStr)
@@ -67,24 +78,21 @@ func (h *Handler) GetPad(ctx *gin.Context) {
 		return
 	}
 
-	pad, err := h.Repository.GetPad(id)
+	service, err := h.Repository.GetService(uint(id))
 	if err != nil {
-		logrus.Error(err)
+		ctx.Status(http.StatusNotFound)
 		return
 	}
-
-	host := ctx.Request.Host
-	hostOnly := strings.Split(host, ":")[0]
-	minioBase := fmt.Sprintf("http://%s:9000", hostOnly)
 
 	ctx.HTML(http.StatusOK, "strategy.html", gin.H{
-		"strategy":  pad,
-		"minioBase": minioBase,
+		"strategy":  service,
+		"minioBase": h.minioBase(ctx),
 	})
 }
 
-// GetCalculation — страница расчёта остаточного ресурса
-func (h *Handler) GetCalculation(ctx *gin.Context) {
+// GetApplication — страница заявки (черновик/сформированная/...)
+func (h *Handler) GetApplication(ctx *gin.Context) {
+	userID := h.currentUserID(ctx)
 	idStr := ctx.Param("id")
 
 	id, err := strconv.Atoi(idStr)
@@ -93,18 +101,48 @@ func (h *Handler) GetCalculation(ctx *gin.Context) {
 		return
 	}
 
-	calc, err := h.Repository.GetCalculation(id)
+	app, err := h.Repository.GetApplicationByID(uint(id), userID)
 	if err != nil {
-		logrus.Error(err)
+		ctx.Status(http.StatusNotFound)
 		return
 	}
 
-	host := ctx.Request.Host
-	hostOnly := strings.Split(host, ":")[0]
-	minioBase := fmt.Sprintf("http://%s:9000", hostOnly)
-
 	ctx.HTML(http.StatusOK, "calculation.html", gin.H{
-		"calc":      calc,
-		"minioBase": minioBase,
+		"app":      app,
+		"minioBase": h.minioBase(ctx),
 	})
+}
+
+// AddToDraft — добавление услуги в текущую заявку через ORM
+func (h *Handler) AddToDraft(ctx *gin.Context) {
+	userID := h.currentUserID(ctx)
+
+	serviceIDStr := ctx.PostForm("service_id")
+	serviceID, err := strconv.Atoi(serviceIDStr)
+	if err != nil || serviceID <= 0 {
+		ctx.Redirect(http.StatusFound, "/")
+		return
+	}
+
+	_, err = h.Repository.AddServiceToDraft(userID, uint(serviceID), 1)
+	if err != nil {
+		logrus.WithError(err).Error("add to draft error")
+	}
+
+	ctx.Redirect(http.StatusFound, "/")
+}
+
+// DeleteDraft — логическое удаление заявки через SQL UPDATE (без ORM)
+func (h *Handler) DeleteDraft(ctx *gin.Context) {
+	userID := h.currentUserID(ctx)
+
+	_, err := h.SQL.Exec(
+		"UPDATE applications SET status = 'deleted' WHERE created_by_id = $1 AND status = 'draft'",
+		userID,
+	)
+	if err != nil {
+		logrus.WithError(err).Error("delete draft sql error")
+	}
+
+	ctx.Redirect(http.StatusFound, "/")
 }

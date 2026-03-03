@@ -20,34 +20,39 @@
                            placeholder="Поиск по типу колодок..."
                            value="{{ .query }}">
                 </div>
-                <button type="submit" class="search-btn" aria-label="Поиск"></button>
+                <button type="submit" class="search-btn search-btn--icon" aria-label="Поиск"></button>
             </form>
         </div>
     </header>
 
 <div class="space">
 
-    <!-- Карточка текущей заявки -->
-    {{ range .calculations }}
-    <a href="/calculations/{{ .ID }}" class="calculation-card">
-        <div class="calculation-card__title">Заявка № {{ .ID }}</div>
+    <!-- Карточка текущей заявки (черновик/корзина) -->
+    {{ if .draft }}
+    <a href="/applications/{{ .draft.ID }}" class="calculation-card">
+        <div class="calculation-card__title">Корзина (черновик)</div>
         <div class="calculation-card__info">
-            <span>Стиль вождения: <strong>{{ .DrivingStyle }}</strong></span>
-            <span>Пробег: <strong>{{ .Mileage }} км</strong></span>
-            <span>Остаток: 
-                <span class="calculation-card__badge">
-                    {{ printf "%.0f" .ResultRemainingKM }} км ({{ printf "%.1f" .ResultPercent }}%)
-                </span>
-            </span>
+            <span>Заявка № <strong>{{ .draft.ID }}</strong></span>
+            <span>Позиций: <strong>{{ len .draft.Items }}</strong></span>
         </div>
+        <form method="POST" action="/cart/delete" style="margin-top: 12px;">
+            <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">Удалить заявку</button>
+        </form>
     </a>
+    {{ else }}
+    <div class="calculation-card" style="opacity:0.55; cursor:not-allowed;">
+        <div class="calculation-card__title">Корзина пуста</div>
+        <div class="calculation-card__info">
+            <span>Добавь услугу, чтобы создать заявку-черновик</span>
+        </div>
+    </div>
     {{ end }}
 
     <!-- Список колодок -->
     <div class="container">
-        {{ range .strategies }}
-        <a href="/strategies/{{ .ID }}" class="card">
-            <img src="{{ $.minioBase }}/test/{{ .Image }}" alt="{{ .Title }}"
+        {{ range .services }}
+        <a href="/services/{{ .ID }}" class="card">
+            <img src="{{ $.minioBase }}/test/{{ .ImageURL }}"
                  onerror="this.src='/static/img/placeholder.svg'; this.onerror=null"
                  class="card__image">
             <div class="card__body">

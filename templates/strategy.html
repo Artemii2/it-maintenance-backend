@@ -20,19 +20,18 @@
                            placeholder="Поиск по типу колодок..."
                            value="{{ .query }}">
                 </div>
-                <button type="submit" class="search-btn" aria-label="Поиск"></button>
+                <button type="submit" class="search-btn search-btn--icon" aria-label="Поиск"></button>
             </form>
         </div>
     </header>
 
 <div class="detail-wrapper">
-    <a href="/" class="back-link">← Вернуться к каталогу</a>
 
     <div class="detail-card">
         <div class="detail-card__image-col">
             <video class="detail-card__image"
-                   src="{{ .minioBase }}/test/{{ .strategy.Video }}"
-                   poster="{{ .minioBase }}/test/{{ .strategy.Image }}"
+                   src="{{ .minioBase }}/test/{{ .strategy.VideoURL }}"
+                   poster="{{ .minioBase }}/test/{{ .strategy.ImageURL }}"
                    autoplay
                    muted
                    loop
@@ -73,9 +72,12 @@
         </div>
 
         <div class="detail-card__aside">
-            <div class="detail-card__price-button">
-                от {{ .strategy.Price }} ₽
-            </div>
+            <form method="POST" action="/cart/add" style="width: 100%;">
+                <input type="hidden" name="service_id" value="{{ .strategy.ID }}">
+                <button type="submit" class="detail-card__price-button">
+                    В корзину
+                </button>
+            </form>
             <div class="detail-card__stock">
                 В наличии 100 шт
             </div>
