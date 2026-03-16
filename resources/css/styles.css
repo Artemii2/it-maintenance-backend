@@ -430,6 +430,33 @@ img {
   color: var(--auto-text);
 }
 
+/* ===== Formula block (lab requirement) ===== */
+
+.calc-formula {
+  margin-top: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(17, 24, 39, 0.10);
+  background: #f9fafb;
+  padding: 12px 14px;
+}
+
+.calc-formula__title {
+  font-weight: 900;
+  font-size: 13px;
+  color: var(--auto-text);
+  margin-bottom: 6px;
+}
+
+.calc-formula__body {
+  font-size: 13px;
+  color: var(--auto-text);
+}
+
+.calc-formula__hint {
+  margin-top: 6px;
+  color: var(--auto-muted);
+}
+
 /* ===== Calculation page ===== */
 
 .calculation-detail {

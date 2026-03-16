@@ -126,15 +126,18 @@ func (r *Repository) GetApplicationByID(appID uint, userID uint) (*Application, 
 		return nil, err
 	}
 
-	// расчётное поле: total_price = Σ (price * quantity) при завершении
-	if app.Status == "completed" && app.TotalPrice == 0 && len(app.Items) > 0 {
-		total := 0
-		for _, it := range app.Items {
-			total += it.Service.Price * it.Quantity
-		}
-		if err := r.DB.Model(&Application{}).Where("id = ?", app.ID).Update("total_price", total).Error; err == nil {
-			app.TotalPrice = total
-		}
+	// расчётное поле для отображения на странице:
+	// total_price = Σ (price * quantity)
+	total := 0
+	for _, it := range app.Items {
+		total += it.Service.Price * it.Quantity
+	}
+	app.TotalPrice = total
+
+	// По ТЗ: одно из полей рассчитывается при завершении заявки.
+	// Поэтому в БД фиксируем total_price только для статуса "completed".
+	if app.Status == "completed" {
+		_ = r.DB.Model(&Application{}).Where("id = ?", app.ID).Update("total_price", total).Error
 	}
 	return &app, nil
 }

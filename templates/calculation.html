@@ -41,6 +41,8 @@
             {{ if gt .app.TotalPrice 0 }}<div><strong>Итоговая стоимость:</strong> {{ .app.TotalPrice }} ₽</div>{{ end }}
         </div>
 
+        
+
         <form method="POST" action="/cart/delete" style="margin-top: 12px;">
             <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">
                 Удалить заявку
