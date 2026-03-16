@@ -25,7 +25,7 @@ func NewHandler(r *repository.Repository) *Handler {
 
 // GetPads — главная страница: список типов колодок + карточка заявки
 func (h *Handler) GetPads(ctx *gin.Context) {
-	var pads []repository.BrakePad
+	var pads []repository.BrakePadService
 	var err error
 
 	searchQuery := ctx.Query("query")
@@ -57,7 +57,7 @@ func (h *Handler) GetPads(ctx *gin.Context) {
 	})
 }
 
-// GetPad — страница конкретного типа колодок
+// GetPad — страница конкретного типа колодок (brake pad)
 func (h *Handler) GetPad(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 
@@ -77,13 +77,13 @@ func (h *Handler) GetPad(ctx *gin.Context) {
 	hostOnly := strings.Split(host, ":")[0]
 	minioBase := fmt.Sprintf("http://%s:9000", hostOnly)
 
-	ctx.HTML(http.StatusOK, "strategy.html", gin.H{
+	ctx.HTML(http.StatusOK, "brake_pad.html", gin.H{
 		"strategy":  pad,
 		"minioBase": minioBase,
 	})
 }
 
-// GetCalculation — страница расчёта остаточного ресурса
+// GetCalculation — страница заявки brake pad wear
 func (h *Handler) GetCalculation(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 
@@ -103,7 +103,7 @@ func (h *Handler) GetCalculation(ctx *gin.Context) {
 	hostOnly := strings.Split(host, ":")[0]
 	minioBase := fmt.Sprintf("http://%s:9000", hostOnly)
 
-	ctx.HTML(http.StatusOK, "calculation.html", gin.H{
+	ctx.HTML(http.StatusOK, "brake_pad_wear.html", gin.H{
 		"calc":      calc,
 		"minioBase": minioBase,
 	})

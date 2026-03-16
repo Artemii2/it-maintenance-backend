@@ -11,32 +11,39 @@
                 <img src="/static/img/logo.png" alt="BrakePad" class="logo-img">
                 <span class="logo-text"></span>
             </a>
-    
-            <form action="/" method="GET" class="search-form">
-                <div class="search-input-wrapper">
-                    <input type="text"
-                           name="query"
-                           class="search-input"
-                           placeholder="Поиск по типу колодок..."
-                           value="{{ .query }}">
-                </div>
-                <button type="submit" class="search-btn" aria-label="Поиск"></button>
-            </form>
         </div>
     </header>
 
+<div class="toolbar">
+    <button class="cart-button" aria-label="Корзина">
+        🧺
+    </button>
+    <form action="/" method="GET" class="search-form">
+        <div class="search-input-wrapper">
+            <input type="text"
+                   name="query"
+                   class="search-input"
+                   placeholder="Поиск по типу колодок..."
+                   value="{{ .query }}">
+        </div>
+        <button type="submit" class="search-btn" aria-label="Поиск"></button>
+    </form>
+</div>
+
 <div class="space">
 
-    <!-- Карточка текущей заявки -->
+    <!-- Карточка текущей заявки brake pad wear -->
     {{ range .calculations }}
-    <a href="/calculations/{{ .ID }}" class="calculation-card">
-        <div class="calculation-card__title">Заявка № {{ .ID }}</div>
+    <a href="/brake-pad-wear/{{ .ID }}" class="calculation-card">
+        <div class="calculation-card__title">Заявка brake pad wear № {{ .ID }}</div>
         <div class="calculation-card__info">
+            <span>Автомобиль: <strong>{{ .CarInfo }}</strong></span>
             <span>Стиль вождения: <strong>{{ .DrivingStyle }}</strong></span>
             <span>Пробег: <strong>{{ .Mileage }} км</strong></span>
-            <span>Остаток: 
+            {{ $item := index .Items 0 }}
+            <span>Остаток:
                 <span class="calculation-card__badge">
-                    {{ printf "%.0f" .ResultRemainingKM }} км ({{ printf "%.1f" .ResultPercent }}%)
+                    {{ printf "%.0f" $item.RemainingKM }} км
                 </span>
             </span>
         </div>
@@ -46,7 +53,7 @@
     <!-- Список колодок -->
     <div class="container">
         {{ range .strategies }}
-        <a href="/strategies/{{ .ID }}" class="card">
+        <a href="/brake-pad/{{ .ID }}" class="card">
             <img src="{{ $.minioBase }}/test/{{ .Image }}" alt="{{ .Title }}"
                  onerror="this.src='/static/img/placeholder.svg'; this.onerror=null"
                  class="card__image">
@@ -54,9 +61,7 @@
                 <h2 class="card__title">{{ .Title }}</h2>
                 <p class="card__key-type">Тип: {{ .PadType }}</p>
                 <p class="card__response-time">Базовый ресурс: {{ .BaseResource }} км</p>
-                <div class="card__use-case">
-                    {{ .Price }} ₽
-                </div>
+                <p class="card__response-time">Рекомендованный стиль: {{ .DrivingStyleHint }}</p>
             </div>
         </a>
         {{ end }}

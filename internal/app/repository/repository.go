@@ -14,49 +14,56 @@ func NewRepository() (*Repository, error) {
 }
 
 // =====================
-// УСЛУГА — ТОРМОЗНЫЕ КОЛОДКИ
+// УСЛУГА — ПРОГНОЗ ИЗНОСА ТОРМОЗНЫХ КОЛОДОК
 // =====================
 
-type BrakePad struct {
-	ID            int
-	Title         string
-	Description   string
-	Image         string // ключ изображения (Minio)
-	Video         string // ключ видеоролика (Minio)
-	PadType       string // тип колодок
-	BaseResource  int    // базовый ресурс (км)
-	Price         int    // цена (руб)
+// BrakePadService описывает тип колодок и коэффициенты износа для стилей вождения.
+type BrakePadService struct {
+	ID           int
+	Title        string
+	Description  string
+	Image        string // ключ изображения (Minio)
+	Video        string // ключ видеоролика (Minio)
+	PadType      string // тип колодок
+	BaseResource int    // базовый ресурс (км)
+
+	// краткое описание рекомендованного стиля вождения
+	DrivingStyleHint string
+
+	// коэффициенты износа по стилю вождения
+	CalmCoef       float64 // спокойный
+	SportCoef      float64 // спортивный
+	AggressiveCoef float64 // агрессивный
 }
 
 // =====================
-// ЗАЯВКА — РАСЧЁТ ИЗНОСА
+// ЗАЯВКА brake pad wear
 // =====================
 
-type WearCalculation struct {
-	ID                int
-	Title             string
-	Description       string
-	DrivingStyle      string  // стиль вождения
-	Mileage           int     // текущий пробег
-	ResultRemainingKM float64 // остаток в км
-	ResultPercent     float64 // остаток в %
-	Status            string
-	Pads              []CalculationPad
-	PadCount          int
+// BrakePadWear — заявка на расчёт износа колодок.
+type BrakePadWear struct {
+	ID          int
+	CarInfo     string  // описание автомобиля текстом
+	DrivingStyle string  // стиль вождения
+	Mileage      int     // пробег в км
+	Status       string
+
+	Items []BrakePadWearItem
 }
 
-// связь м-м
-type CalculationPad struct {
-	Pad     BrakePad
-	Comment string
+// BrakePadWearItem — связь заявки и услуги (м-м) с пробегом и результатом.
+type BrakePadWearItem struct {
+	Service       BrakePadService
+	Mileage       int     // пробег для этой услуги (км)
+	RemainingKM   float64 // результат: остаточный ресурс колодок в км
 }
 
 // =====================
 // ДАННЫЕ УСЛУГ
 // =====================
 
-func (r *Repository) GetPads() ([]BrakePad, error) {
-	pads := []BrakePad{
+func (r *Repository) GetPads() ([]BrakePadService, error) {
+	pads := []BrakePadService{
 		{
 			ID:           1,
 			Title:        "Керамические тормозные колодки",
@@ -65,7 +72,10 @@ func (r *Repository) GetPads() ([]BrakePad, error) {
 			Video:        "ceramic.MP4",
 			PadType:      "Керамические",
 			BaseResource: 60000,
-			Price:        8500,
+			DrivingStyleHint: "Спокойный и размеренный.",
+			CalmCoef:     1.0,
+			SportCoef:    0.85,
+			AggressiveCoef: 0.7,
 		},
 		{
 			ID:           2,
@@ -75,7 +85,10 @@ func (r *Repository) GetPads() ([]BrakePad, error) {
 			Video:        "organic.MP4",
 			PadType:      "Органические",
 			BaseResource: 35000,
-			Price:        4500,
+			DrivingStyleHint: "Спокойный.",
+			CalmCoef:     1.0,
+			SportCoef:    0.8,
+			AggressiveCoef: 0.6,
 		},
 		{
 			ID:           3,
@@ -85,7 +98,10 @@ func (r *Repository) GetPads() ([]BrakePad, error) {
 			Video:        "semi_metallic.MP4",
 			PadType:      "Полуметаллические",
 			BaseResource: 45000,
-			Price:        6500,
+			DrivingStyleHint: "Спортивный, размеренный.",
+			CalmCoef:     1.0,
+			SportCoef:    0.9,
+			AggressiveCoef: 0.75,
 		},
 	}
 
@@ -96,11 +112,11 @@ func (r *Repository) GetPads() ([]BrakePad, error) {
 // ФИЛЬТР ПО НАЗВАНИЮ
 // =====================
 
-func (r *Repository) GetPadsByTitle(query string) ([]BrakePad, error) {
+func (r *Repository) GetPadsByTitle(query string) ([]BrakePadService, error) {
 	pads, _ := r.GetPads()
 	q := strings.ToLower(query)
 
-	var result []BrakePad
+	var result []BrakePadService
 	for _, p := range pads {
 		if strings.Contains(strings.ToLower(p.Title), q) ||
 			strings.Contains(strings.ToLower(p.Description), q) ||
@@ -115,30 +131,30 @@ func (r *Repository) GetPadsByTitle(query string) ([]BrakePad, error) {
 // ПОЛУЧИТЬ КОЛОДКУ ПО ID
 // =====================
 
-func (r *Repository) GetPad(id int) (BrakePad, error) {
+func (r *Repository) GetPad(id int) (BrakePadService, error) {
 	pads, _ := r.GetPads()
 	for _, p := range pads {
 		if p.ID == id {
 			return p, nil
 		}
 	}
-	return BrakePad{}, fmt.Errorf("колодки не найдены")
+	return BrakePadService{}, fmt.Errorf("колодки не найдены")
 }
 
 // =====================
 // КОЭФФИЦИЕНТ СТИЛЯ
 // =====================
 
-func getDrivingCoefficient(style string) float64 {
+func getDrivingCoefficient(p BrakePadService, style string) float64 {
 	switch style {
 	case "Спокойный":
-		return 1.0
+		return p.CalmCoef
 	case "Спортивный":
-		return 0.8
+		return p.SportCoef
 	case "Агрессивный":
-		return 0.6
+		return p.AggressiveCoef
 	default:
-		return 1.0
+		return p.CalmCoef
 	}
 }
 
@@ -146,13 +162,13 @@ func getDrivingCoefficient(style string) float64 {
 // ПОСТРОЕНИЕ ЗАЯВКИ
 // =====================
 
-func (r *Repository) buildCalculation(id int, drivingStyle string, mileage int, padID int) (WearCalculation, error) {
+func (r *Repository) buildCalculation(id int, carInfo string, drivingStyle string, mileage int, padID int) (BrakePadWear, error) {
 	pad, err := r.GetPad(padID)
 	if err != nil {
-		return WearCalculation{}, err
+		return BrakePadWear{}, err
 	}
 
-	coef := getDrivingCoefficient(drivingStyle)
+	coef := getDrivingCoefficient(pad, drivingStyle)
 	effectiveResource := float64(pad.BaseResource) * coef
 	remaining := effectiveResource - float64(mileage)
 
@@ -160,24 +176,19 @@ func (r *Repository) buildCalculation(id int, drivingStyle string, mileage int, 
 		remaining = 0
 	}
 
-	percent := (remaining / effectiveResource) * 100
+	item := BrakePadWearItem{
+		Service:     pad,
+		Mileage:     mileage,
+		RemainingKM: remaining,
+	}
 
-	return WearCalculation{
-		ID:                id,
-		Title:             "Расчёт остаточного ресурса тормозных колодок",
-		Description:       "Расчёт выполнен на основе типа колодок и стиля вождения.",
-		DrivingStyle:      drivingStyle,
-		Mileage:           mileage,
-		ResultRemainingKM: remaining,
-		ResultPercent:     percent,
-		Status:            "Рассчитано",
-		Pads: []CalculationPad{
-			{
-				Pad:     pad,
-				Comment: "Основной комплект колодок",
-			},
-		},
-		PadCount: 1,
+	return BrakePadWear{
+		ID:          id,
+		CarInfo:     carInfo,
+		DrivingStyle: drivingStyle,
+		Mileage:      mileage,
+		Status:       "Рассчитано",
+		Items:        []BrakePadWearItem{item},
 	}, nil
 }
 
@@ -185,9 +196,10 @@ func (r *Repository) buildCalculation(id int, drivingStyle string, mileage int, 
 // СПИСОК ЗАЯВОК
 // =====================
 
-func (r *Repository) GetCalculations() ([]WearCalculation, error) {
+func (r *Repository) GetCalculations() ([]BrakePadWear, error) {
 	calc, err := r.buildCalculation(
 		1,
+		"Kia Rio X-Line, 2020 г.",
 		"Спортивный",
 		20000,
 		1,
@@ -196,27 +208,15 @@ func (r *Repository) GetCalculations() ([]WearCalculation, error) {
 		return nil, err
 	}
 
-	return []WearCalculation{calc}, nil
+	return []BrakePadWear{calc}, nil
 }
 
-func (r *Repository) GetCalculation(id int) (WearCalculation, error) {
+func (r *Repository) GetCalculation(id int) (BrakePadWear, error) {
 	calcs, _ := r.GetCalculations()
 	for _, c := range calcs {
 		if c.ID == id {
 			return c, nil
 		}
 	}
-	return WearCalculation{}, fmt.Errorf("заявка не найдена")
-}
-
-func (r *Repository) GetCalculationForPad(padID int) (*CalculationPad, error) {
-	calcs, _ := r.GetCalculations()
-	for _, c := range calcs {
-		for _, p := range c.Pads {
-			if p.Pad.ID == padID {
-				return &p, nil
-			}
-		}
-	}
-	return nil, fmt.Errorf("не найдено")
+	return BrakePadWear{}, fmt.Errorf("заявка не найдена")
 }

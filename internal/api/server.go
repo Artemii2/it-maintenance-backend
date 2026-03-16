@@ -27,8 +27,10 @@ func StartServer() {
 	r.Static("/static", "./resources")
 
 	r.GET("/", h.GetPads)
-	r.GET("/strategies/:id", h.GetPad)
-	r.GET("/calculations/:id", h.GetCalculation)
+	// страница услуги: расчёт brake pad wear для выбранного типа колодок
+	r.GET("/brake-pad/:id", h.GetPad)
+	// страница заявки brake pad wear
+	r.GET("/brake-pad-wear/:id", h.GetCalculation)
 
 	// слушаем на всех интерфейсах, чтобы можно было открыть с телефона
 	r.Run("0.0.0.0:8080")
