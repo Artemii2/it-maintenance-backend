@@ -3,6 +3,8 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"math"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -39,9 +41,10 @@ type Service struct {
 	ImageURL string `gorm:"column:image_url"`
 	VideoURL string `gorm:"column:video_url"`
 
-	PadType      string `gorm:"size:40;not null"`
-	BaseResource int    `gorm:"not null"`
-	Price        int    `gorm:"not null"`
+	PadType          string `gorm:"size:40;not null"`
+	BaseResource     int    `gorm:"not null"`
+	Price            int    `gorm:"not null"`
+	DrivingStyleHint string `gorm:"column:driving_style_hint;size:120"`
 }
 
 type Application struct {
@@ -74,6 +77,10 @@ type ApplicationService struct {
 	Comment   string
 
 	Service Service `gorm:"foreignKey:ServiceID"`
+
+	// расчётные поля для прогноза износа (не хранятся в БД)
+	RemainingKM      float64 `gorm:"-"`
+	RemainingPercent int     `gorm:"-"`
 }
 
 // =====================
@@ -126,19 +133,37 @@ func (r *Repository) GetApplicationByID(appID uint, userID uint) (*Application, 
 		return nil, err
 	}
 
-	// расчётное поле для отображения на странице:
-	// total_price = Σ (price * quantity)
-	total := 0
-	for _, it := range app.Items {
-		total += it.Service.Price * it.Quantity
-	}
-	app.TotalPrice = total
+	// Прогноз износа тормозных колодок.
+	// Для каждой услуги в заявке считаем:
+	// исходный ресурс = base_resource * coef(стиль вождения)
+	// остаток (км)    = max(0, исходный ресурс - пробег)
+	// остаток (%)     = max(0, округление(остаток / исходный ресурс * 100))
+	coef := drivingStyleCoef(app.DrivingStyle)
+	mileage := float64(app.Mileage)
 
-	// По ТЗ: одно из полей рассчитывается при завершении заявки.
-	// Поэтому в БД фиксируем total_price только для статуса "completed".
-	if app.Status == "completed" {
-		_ = r.DB.Model(&Application{}).Where("id = ?", app.ID).Update("total_price", total).Error
+	for i := range app.Items {
+		base := float64(app.Items[i].Service.BaseResource)
+		if base <= 0 {
+			continue
+		}
+
+		initial := base * coef
+		remaining := initial - mileage
+		if remaining < 0 {
+			remaining = 0
+		}
+
+		app.Items[i].RemainingKM = remaining
+
+		if initial > 0 {
+			percent := (remaining / initial) * 100
+			if percent < 0 {
+				percent = 0
+			}
+			app.Items[i].RemainingPercent = int(math.Round(percent))
+		}
 	}
+
 	return &app, nil
 }
 
@@ -189,4 +214,24 @@ func (r *Repository) AddServiceToDraft(userID, serviceID uint, qty int) (*Applic
 		}
 		return nil
 	})
+}
+
+// drivingStyleCoef возвращает коэффициент ресурса колодок
+// в зависимости от стиля вождения.
+// Спокойный  -> ресурс больше, коэффициент > 1
+// Спортивный -> базовый ресурс
+// Агрессивный-> ресурс меньше, коэффициент < 1
+func drivingStyleCoef(style string) float64 {
+	s := strings.ToLower(style)
+
+	switch {
+	case strings.Contains(s, "спокой"):
+		return 1.2
+	case strings.Contains(s, "спорт"):
+		return 1.0
+	case strings.Contains(s, "агресс"):
+		return 0.8
+	default:
+		return 1.0
+	}
 }

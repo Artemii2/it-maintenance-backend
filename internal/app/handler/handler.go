@@ -84,13 +84,13 @@ func (h *Handler) GetService(ctx *gin.Context) {
 		return
 	}
 
-	ctx.HTML(http.StatusOK, "strategy.html", gin.H{
+	ctx.HTML(http.StatusOK, "brake_pad.html", gin.H{
 		"strategy":  service,
 		"minioBase": h.minioBase(ctx),
 	})
 }
 
-// GetApplication — страница заявки (черновик/сформированная/...)
+// GetApplication — страница brake pad wear (черновик/сформированная/...)
 func (h *Handler) GetApplication(ctx *gin.Context) {
 	userID := h.currentUserID(ctx)
 	idStr := ctx.Param("id")
@@ -107,7 +107,7 @@ func (h *Handler) GetApplication(ctx *gin.Context) {
 		return
 	}
 
-	ctx.HTML(http.StatusOK, "calculation.html", gin.H{
+	ctx.HTML(http.StatusOK, "brake_pad_ware.html", gin.H{
 		"app":      app,
 		"minioBase": h.minioBase(ctx),
 	})

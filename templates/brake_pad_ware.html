@@ -1,6 +1,6 @@
 <html lang="ru">
 <head>
-    <title>Заявка № {{ .calc.ID }} — Расчёт износа</title>
+    <title>Заявка № {{ .app.ID }} — Расчёт износа</title>
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
@@ -38,16 +38,28 @@
             <div><strong>Создана:</strong> {{ .app.CreatedAt }}</div>
             {{ if .app.DrivingStyle }}<div><strong>Стиль вождения:</strong> {{ .app.DrivingStyle }}</div>{{ end }}
             {{ if gt .app.Mileage 0 }}<div><strong>Пробег:</strong> {{ .app.Mileage }} км</div>{{ end }}
-            {{ if gt .app.TotalPrice 0 }}<div><strong>Итоговая стоимость:</strong> {{ .app.TotalPrice }} ₽</div>{{ end }}
         </div>
 
-        
+        <div class="calc-formula">
+            <div class="calc-formula__title">Формула расчёта прогноза износа</div>
+            <div class="calc-formula__body">
+                Исходный ресурс = базовый ресурс колодок × коэффициент стиля вождения.<br>
+                Остаточный ресурс (км) = max(0, исходный ресурс − пробег).<br>
+                Остаточный ресурс (%) = остаточный ресурс ÷ исходный ресурс × 100%.
+            </div>
+            <div class="calc-formula__hint">
+                Коэффициент стиля: спокойный ≈ 1.2, спортивный ≈ 1.0, агрессивный ≈ 0.8.
+                Для каждой услуги эти расчёты выполняются отдельно.
+            </div>
+        </div>
 
+        {{ if eq .app.Status "draft" }}
         <form method="POST" action="/cart/delete" style="margin-top: 12px;">
             <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">
-                Удалить заявку
+                Удалить заявку (логическое удаление)
             </button>
         </form>
+        {{ end }}
     </div>
 
     <table class="calc-table">
@@ -56,6 +68,7 @@
             <th>Изображение</th>
             <th>Услуга</th>
             <th>Кол-во</th>
+            <th>Остаток ресурса</th>
             <th>Комментарий</th>
         </tr>
         </thead>
@@ -70,6 +83,10 @@
             </td>
             <td>{{ .Service.Title }}</td>
             <td>{{ .Quantity }}</td>
+            <td>
+                {{ printf "%.0f" .RemainingKM }} км<br>
+                {{ .RemainingPercent }}%
+            </td>
             <td>
                 <textarea readonly class="comment-input" rows="2">{{ .Comment }}</textarea>
             </td>

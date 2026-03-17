@@ -40,8 +40,9 @@ func StartServer() {
 	r.Static("/static", "./resources")
 
 	r.GET("/", h.GetServices)
-	r.GET("/services/:id", h.GetService)
-	r.GET("/applications/:id", h.GetApplication)
+	// новые URL только в стиле brake pad
+	r.GET("/brake-pad/:id", h.GetService)
+	r.GET("/brake-pad-wear/:id", h.GetApplication)
 
 	r.POST("/cart/add", h.AddToDraft)
 	r.POST("/cart/delete", h.DeleteDraft)

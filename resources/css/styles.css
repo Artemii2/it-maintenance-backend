@@ -50,15 +50,31 @@ img {
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 }
 
+.header-cart {
+  position: absolute;
+  top: 12px;
+  right: 24px;
+  z-index: 5;
+}
+
 .header-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 16px 32px 20px;
+  padding: 12px 24px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
+}
+
+.header-container .logo-block {
+  display: block;
+}
+
+.header-container .search-form {
+  width: 100%;
+  max-width: 560px;
 }
 
 .logo-block {
@@ -81,6 +97,50 @@ img {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Корзина в хедере — вся функция заявки через неё */
+.cart-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  text-decoration: none;
+  transition: background 0.15s ease;
+  position: relative;
+}
+
+.cart-icon:hover {
+  background: #000;
+}
+
+.cart-icon__count {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--auto-red);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cart-icon--disabled {
+  opacity: 0.5;
+  cursor: default;
+  background: #9ca3af;
 }
 
 .search-form {
@@ -269,6 +329,15 @@ img {
   color: var(--auto-muted);
 }
 
+.card__specs {
+  margin: 0 0 8px;
+}
+
+.card__specs .card__key-type,
+.card__specs .card__response-time {
+  margin: 0 0 4px;
+}
+
 .card__use-case {
   margin: 10px 0 0;
   font-size: 13px;
@@ -308,30 +377,28 @@ img {
   overflow: hidden;
   box-shadow: var(--auto-shadow);
   display: flex;
-  align-items: stretch;
+  flex-direction: column;
   gap: 0;
 }
 
-.detail-card__image-col {
-  flex: 0 0 360px;
-  padding: 24px 0 24px 24px;
+/* Видео на всю ширину карточки, по высоте не растягиваем */
+.detail-card__video-wrap {
+  width: 100%;
+  padding: 24px 24px 0;
 }
 
-.detail-card__image {
+.detail-card__video {
   width: 100%;
-  height: 260px;
-  object-fit: cover;
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
   background: #e5e7eb;
   border-radius: 18px;
+  display: block;
 }
 
-.detail-card__info-col {
-  flex: 1 1 auto;
-  padding: 24px 24px 24px 20px;
-}
-
-.detail-card__body {
-  height: 100%;
+.detail-card__content {
+  padding: 20px 24px 24px;
 }
 
 .detail-card__title {
@@ -340,34 +407,23 @@ img {
   font-weight: 900;
 }
 
-.detail-card__meta-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.detail-card__badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  background: #f3f4f6;
+.detail-card__specs {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border-radius: 12px;
   border: 1px solid rgba(17, 24, 39, 0.08);
 }
 
-.detail-card__badge--green {
-  color: #0f5132;
-  background: #eaf7ef;
-  border-color: rgba(15, 81, 50, 0.18);
+.detail-card__spec-row {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--auto-text);
+  font-weight: 600;
 }
 
-.detail-card__badge--blue {
-  color: #0b3a67;
-  background: #eaf2ff;
-  border-color: rgba(11, 58, 103, 0.18);
+.detail-card__spec-row:last-child {
+  margin-bottom: 0;
 }
 
 .detail-card__meta {
@@ -394,11 +450,10 @@ img {
 }
 
 .detail-card__aside {
-  flex: 0 0 220px;
-  padding: 24px 24px 24px 0;
+  margin-top: 20px;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 12px;
 }
 
@@ -407,10 +462,12 @@ img {
   text-align: center;
   padding: 10px 16px;
   border-radius: 999px;
+  border: 0;
   background: var(--auto-red);
   color: #fff;
   font-weight: 900;
   font-size: 15px;
+  cursor: pointer;
 }
 
 .detail-card__stock {
@@ -599,11 +656,11 @@ img {
     flex-direction: column;
   }
 
-  .detail-card__image-col {
-    padding: 16px 16px 0 16px;
+  .detail-card__video-wrap {
+    padding: 16px 16px 0;
   }
 
-  .detail-card__info-col {
+  .detail-card__content {
     padding: 16px;
   }
 
