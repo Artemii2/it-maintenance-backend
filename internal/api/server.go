@@ -44,6 +44,7 @@ func StartServer() {
 	// новые человекочитаемые URL под тему brake pad
 	r.GET("/brake-pad/:id", h.GetService)
 	r.GET("/brake-pad-wear/:id", h.GetApplication)
+	r.POST("/brake-pad-wear/:id/recalc", h.RecalcWear)
 	// старые URL тоже оставляем, чтобы не ломать старые ссылки
 	r.GET("/services/:id", h.GetService)
 	r.GET("/applications/:id", h.GetApplication)

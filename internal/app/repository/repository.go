@@ -324,6 +324,19 @@ func (r *Repository) AddServiceToDraft(userID, serviceID uint, qty int) (*Applic
 	})
 }
 
+// UpdateApplicationWearParams обновляет параметры расчёта износа у заявки пользователя.
+// Используется HTML-формой "Рассчитать" на странице заявки.
+func (r *Repository) UpdateApplicationWearParams(appID, userID uint, drivingStyle string, mileage int) error {
+	updates := map[string]any{
+		"driving_style": drivingStyle,
+		"mileage":       mileage,
+	}
+
+	return r.DB.Model(&Application{}).
+		Where("id = ? AND created_by_id = ? AND status <> 'deleted'", appID, userID).
+		Updates(updates).Error
+}
+
 // DeleteApplicationItem удаляет одну услугу из заявки (м-м).
 func (r *Repository) DeleteApplicationItem(appID, serviceID, userID uint) error {
 	// проверяем, что заявка принадлежит пользователю

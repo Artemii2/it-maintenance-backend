@@ -40,23 +40,26 @@
             {{ if gt .app.Mileage 0 }}<div><strong>Пробег:</strong> {{ .app.Mileage }} км</div>{{ end }}
         </div>
 
-        <div class="calc-formula">
-            <div class="calc-formula__title">Формула расчёта прогноза износа</div>
-            <div class="calc-formula__body">
-                Исходный ресурс = базовый ресурс колодок × коэффициент стиля вождения.<br>
-                Остаточный ресурс (км) = max(0, исходный ресурс − пробег).<br>
-                Остаточный ресурс (%) = остаточный ресурс ÷ исходный ресурс × 100%.
+        <form method="POST" action="/brake-pad-wear/{{ .app.ID }}/recalc" style="margin-top: 12px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <input type="number" name="mileage" min="0" step="1"
+                       value="{{ .app.Mileage }}"
+                       class="comment-input"
+                       style="max-width: 220px; height: 40px;"
+                       placeholder="Пробег, км">
+                <select name="driving_style" class="comment-input" style="max-width: 240px; height: 40px;">
+                    <option value="Спокойный" {{ if eq .app.DrivingStyle "Спокойный" }}selected{{ end }}>Спокойный</option>
+                    <option value="Спортивный" {{ if or (eq .app.DrivingStyle "Спортивный") (eq .app.DrivingStyle "") }}selected{{ end }}>Спортивный</option>
+                    <option value="Агрессивный" {{ if eq .app.DrivingStyle "Агрессивный" }}selected{{ end }}>Агрессивный</option>
+                </select>
+                <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">Рассчитать</button>
             </div>
-            <div class="calc-formula__hint">
-                Коэффициент стиля: спокойный ≈ 1.2, спортивный ≈ 1.0, агрессивный ≈ 0.8.
-                Для каждой услуги эти расчёты выполняются отдельно.
-            </div>
-        </div>
+        </form>
 
         {{ if eq .app.Status "draft" }}
         <form method="POST" action="/cart/delete" style="margin-top: 12px;">
             <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">
-                Удалить заявку (логическое удаление)
+                Удалить заявку
             </button>
         </form>
         {{ end }}

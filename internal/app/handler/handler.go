@@ -123,6 +123,36 @@ func (h *Handler) GetApplication(ctx *gin.Context) {
 	})
 }
 
+// RecalcWear — пересчитать износ (обновить стиль/пробег) и вернуть на страницу заявки.
+func (h *Handler) RecalcWear(ctx *gin.Context) {
+	userID := h.currentUserID(ctx)
+	idStr := ctx.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		ctx.Status(http.StatusBadRequest)
+		return
+	}
+
+	style := strings.TrimSpace(ctx.PostForm("driving_style"))
+	mileageStr := strings.TrimSpace(ctx.PostForm("mileage"))
+	mileage := 0
+	if mileageStr != "" {
+		if n, err := strconv.Atoi(mileageStr); err == nil && n >= 0 {
+			mileage = n
+		}
+	}
+
+	if style == "" {
+		style = "Спортивный"
+	}
+
+	if err := h.Repository.UpdateApplicationWearParams(uint(id), userID, style, mileage); err != nil {
+		logrus.WithError(err).Error("recalc wear error")
+	}
+
+	ctx.Redirect(http.StatusFound, fmt.Sprintf("/brake-pad-wear/%d", id))
+}
+
 // AddToDraft — добавление услуги в текущую заявку через ORM
 func (h *Handler) AddToDraft(ctx *gin.Context) {
 	userID := h.currentUserID(ctx)
