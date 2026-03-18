@@ -43,6 +43,7 @@ func StartServer() {
 	// новые URL только в стиле brake pad
 	r.GET("/brake-pad/:id", h.GetService)
 	r.GET("/brake-pad-wear/:id", h.GetApplication)
+	r.POST("/brake-pad-wear/:id/recalc", h.RecalcWear)
 
 	r.POST("/cart/add", h.AddToDraft)
 	r.POST("/cart/delete", h.DeleteDraft)
