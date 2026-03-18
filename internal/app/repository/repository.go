@@ -3,6 +3,8 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"math"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -30,6 +32,19 @@ type User struct {
 	CreatedAt    time.Time
 }
 
+// CreateUser регистрирует нового пользователя.
+func (r *Repository) CreateUser(username, passwordHash string, isModerator bool) (*User, error) {
+	u := &User{
+		Username:     username,
+		PasswordHash: passwordHash,
+		IsModerator:  isModerator,
+	}
+	if err := r.DB.Create(u).Error; err != nil {
+		return nil, err
+	}
+	return u, nil
+}
+
 type Service struct {
 	ID          uint   `gorm:"primaryKey"`
 	Title       string `gorm:"size:120;not null"`
@@ -39,9 +54,10 @@ type Service struct {
 	ImageURL string `gorm:"column:image_url"`
 	VideoURL string `gorm:"column:video_url"`
 
-	PadType      string `gorm:"size:40;not null"`
-	BaseResource int    `gorm:"not null"`
-	Price        int    `gorm:"not null"`
+	PadType          string `gorm:"size:40;not null"`
+	BaseResource     int    `gorm:"not null"`
+	Price            int    `gorm:"not null"`
+	DrivingStyleHint string `gorm:"column:driving_style_hint;size:120"`
 }
 
 type Application struct {
@@ -62,6 +78,9 @@ type Application struct {
 	TotalPrice int `gorm:"column:total_price"`
 
 	Items []ApplicationService `gorm:"foreignKey:ApplicationID"`
+
+	// вычисляемые поля только для отдачи в API (не хранятся в БД)
+	ItemsCount int `gorm:"-"`
 }
 
 type ApplicationService struct {
@@ -74,6 +93,10 @@ type ApplicationService struct {
 	Comment   string
 
 	Service Service `gorm:"foreignKey:ServiceID"`
+
+	// расчётные поля для прогноза износа (не хранятся в БД)
+	RemainingKM      float64 `gorm:"-"`
+	RemainingPercent int     `gorm:"-"`
 }
 
 // =====================
@@ -93,12 +116,48 @@ func (r *Repository) SearchServices(query string) ([]Service, error) {
 	return services, nil
 }
 
+// FilterServices — список услуг для REST API с простыми фильтрами по полям.
+// Фильтры опциональны; записи со статусом "deleted" не возвращаются.
+func (r *Repository) FilterServices(title, padType, status string) ([]Service, error) {
+	var services []Service
+
+	q := r.DB.Model(&Service{})
+
+	// по умолчанию исключаем удалённые
+	if status == "" {
+		q = q.Where("status <> ?", "deleted")
+	} else {
+		q = q.Where("status = ?", status)
+	}
+
+	if title != "" {
+		like := fmt.Sprintf("%%%s%%", title)
+		q = q.Where("title ILIKE ? OR description ILIKE ?", like, like)
+	}
+	if padType != "" {
+		q = q.Where("pad_type = ?", padType)
+	}
+
+	if err := q.Order("id ASC").Find(&services).Error; err != nil {
+		return nil, err
+	}
+	return services, nil
+}
+
 func (r *Repository) GetService(id uint) (Service, error) {
 	var s Service
 	if err := r.DB.Where("id = ? AND status = 'active'", id).First(&s).Error; err != nil {
 		return Service{}, err
 	}
 	return s, nil
+}
+
+// CreateService — создание новой услуги.
+func (r *Repository) CreateService(s *Service) error {
+	if s.Status == "" {
+		s.Status = "active"
+	}
+	return r.DB.Create(s).Error
 }
 
 func (r *Repository) GetDraftApplication(userID uint) (*Application, error) {
@@ -116,6 +175,55 @@ func (r *Repository) GetDraftApplication(userID uint) (*Application, error) {
 	return &app, nil
 }
 
+// GetCartInfo — черновая заявка пользователя + количество услуг в ней.
+func (r *Repository) GetCartInfo(userID uint) (*Application, int, error) {
+	app, err := r.GetDraftApplication(userID)
+	if err != nil {
+		return nil, 0, err
+	}
+	if app == nil {
+		return nil, 0, nil
+	}
+	count := 0
+	for _, it := range app.Items {
+		count += it.Quantity
+	}
+	return app, count, nil
+}
+
+// FilterApplicationsForUser — список заявок пользователя (кроме deleted и draft)
+// с фильтрацией по статусу и диапазону даты формирования.
+func (r *Repository) FilterApplicationsForUser(
+	userID uint,
+	status string,
+	formedFrom, formedTo *time.Time,
+) ([]Application, error) {
+	var apps []Application
+
+	q := r.DB.Model(&Application{}).
+		Preload("Items").
+		Where("created_by_id = ? AND status NOT IN ('deleted', 'draft')", userID)
+
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	if formedFrom != nil {
+		q = q.Where("formed_at >= ?", *formedFrom)
+	}
+	if formedTo != nil {
+		q = q.Where("formed_at <= ?", *formedTo)
+	}
+
+	if err := q.Order("formed_at DESC, id DESC").Find(&apps).Error; err != nil {
+		return nil, err
+	}
+
+	for i := range apps {
+		apps[i].ItemsCount = len(apps[i].Items)
+	}
+	return apps, nil
+}
+
 func (r *Repository) GetApplicationByID(appID uint, userID uint) (*Application, error) {
 	var app Application
 	err := r.DB.
@@ -126,11 +234,36 @@ func (r *Repository) GetApplicationByID(appID uint, userID uint) (*Application, 
 		return nil, err
 	}
 
-	// расчётное поле для отображения на странице:
-	// total_price = Σ (price * quantity)
+	// Прогноз износа тормозных колодок.
+	// Для каждой услуги в заявке считаем:
+	// исходный ресурс = base_resource * coef(стиль вождения)
+	// остаток (км)    = max(0, исходный ресурс - пробег)
+	// остаток (%)     = max(0, округление(остаток / исходный ресурс * 100))
+	coef := drivingStyleCoef(app.DrivingStyle)
+	mileage := float64(app.Mileage)
+
 	total := 0
-	for _, it := range app.Items {
-		total += it.Service.Price * it.Quantity
+	for i := range app.Items {
+		base := float64(app.Items[i].Service.BaseResource)
+		if base > 0 {
+			initial := base * coef
+			remaining := initial - mileage
+			if remaining < 0 {
+				remaining = 0
+			}
+			app.Items[i].RemainingKM = remaining
+
+			if initial > 0 {
+				percent := (remaining / initial) * 100
+				if percent < 0 {
+					percent = 0
+				}
+				app.Items[i].RemainingPercent = int(math.Round(percent))
+			}
+		}
+
+		// параллельно считаем total_price, чтобы не ломать REST-логику
+		total += app.Items[i].Service.Price * app.Items[i].Quantity
 	}
 	app.TotalPrice = total
 
@@ -189,4 +322,144 @@ func (r *Repository) AddServiceToDraft(userID, serviceID uint, qty int) (*Applic
 		}
 		return nil
 	})
+}
+
+// DeleteApplicationItem удаляет одну услугу из заявки (м-м).
+func (r *Repository) DeleteApplicationItem(appID, serviceID, userID uint) error {
+	// проверяем, что заявка принадлежит пользователю
+	var app Application
+	if err := r.DB.Where("id = ? AND created_by_id = ?", appID, userID).First(&app).Error; err != nil {
+		return err
+	}
+	return r.DB.Where("application_id = ? AND service_id = ?", appID, serviceID).
+		Delete(&ApplicationService{}).Error
+}
+
+// UpdateApplicationItem обновляет количество/позицию/флаг is_primary в м-м.
+// Поля обновляются только если указаны (qty/pos/isPrimary не nil).
+func (r *Repository) UpdateApplicationItem(
+	appID, serviceID, userID uint,
+	qty, pos *int,
+	isPrimary *bool,
+) error {
+	// проверяем, что заявка принадлежит пользователю
+	var app Application
+	if err := r.DB.Where("id = ? AND created_by_id = ?", appID, userID).First(&app).Error; err != nil {
+		return err
+	}
+
+	updates := map[string]any{}
+	if qty != nil {
+		updates["quantity"] = *qty
+	}
+	if pos != nil {
+		updates["position"] = *pos
+	}
+	if isPrimary != nil {
+		updates["is_primary"] = *isPrimary
+	}
+	if len(updates) == 0 {
+		return nil
+	}
+
+	return r.DB.Model(&ApplicationService{}).
+		Where("application_id = ? AND service_id = ?", appID, serviceID).
+		Updates(updates).Error
+}
+
+// UpdateApplicationForCreator обновляет поля заявки, которую меняет создатель.
+// Используется, в том числе, для формирования заявки (смена статуса на formed).
+func (r *Repository) UpdateApplicationForCreator(
+	appID, userID uint,
+	fields map[string]any,
+) (*Application, error) {
+	var app Application
+	if err := r.DB.Where("id = ? AND created_by_id = ?", appID, userID).First(&app).Error; err != nil {
+		return nil, err
+	}
+
+	// обрабатываем статус отдельно, чтобы выставить FormedAt
+	if statusRaw, ok := fields["status"]; ok {
+		if status, ok2 := statusRaw.(string); ok2 && status == "formed" && app.FormedAt == nil {
+			now := time.Now()
+			fields["formed_at"] = now
+		}
+	}
+
+	if err := r.DB.Model(&Application{}).Where("id = ?", appID).Updates(fields).Error; err != nil {
+		return nil, err
+	}
+
+	// перечитываем с позициями и пересчитываем total_price
+	if err := r.DB.Preload("Items.Service").First(&app, appID).Error; err != nil {
+		return nil, err
+	}
+
+	total := 0
+	for _, it := range app.Items {
+		total += it.Service.Price * it.Quantity
+	}
+	app.TotalPrice = total
+	_ = r.DB.Model(&Application{}).Where("id = ?", app.ID).Update("total_price", total).Error
+
+	return &app, nil
+}
+
+// SetApplicationStatus модифицирует статус заявки модератором (approve / reject).
+func (r *Repository) SetApplicationStatus(
+	appID uint,
+	newStatus string,
+	moderatorID uint,
+) (*Application, error) {
+	var app Application
+	if err := r.DB.First(&app, appID).Error; err != nil {
+		return nil, err
+	}
+
+	// разрешаем менять только сформированные заявки
+	if app.Status != "formed" {
+		return nil, fmt.Errorf("status change allowed only from 'formed'")
+	}
+
+	fields := map[string]any{
+		"status":       newStatus,
+		"moderator_id": moderatorID,
+		"completed_at": time.Now(),
+	}
+
+	if err := r.DB.Model(&Application{}).Where("id = ?", appID).Updates(fields).Error; err != nil {
+		return nil, err
+	}
+
+	if err := r.DB.Preload("Items.Service").First(&app, appID).Error; err != nil {
+		return nil, err
+	}
+	return &app, nil
+}
+
+// SoftDeleteApplication — логическое удаление заявки (смена статуса на deleted).
+func (r *Repository) SoftDeleteApplication(appID, userID uint) error {
+	return r.DB.Model(&Application{}).
+		Where("id = ? AND created_by_id = ? AND status <> 'deleted'", appID, userID).
+		Update("status", "deleted").Error
+}
+
+// drivingStyleCoef возвращает коэффициент ресурса колодок
+// в зависимости от стиля вождения.
+// Спокойный  -> ресурс больше, коэффициент > 1
+// Спортивный -> базовый ресурс
+// Агрессивный-> ресурс меньше, коэффициент < 1
+func drivingStyleCoef(style string) float64 {
+	s := strings.ToLower(style)
+
+	switch {
+	case strings.Contains(s, "спокой"):
+		return 1.2
+	case strings.Contains(s, "спорт"):
+		return 1.0
+	case strings.Contains(s, "агресс"):
+		return 0.8
+	default:
+		return 1.0
+	}
 }

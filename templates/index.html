@@ -6,12 +6,18 @@
 <body>
 
     <header class="main-header">
+        <div class="header-cart">
+            {{ if .draft }}
+            <a href="/brake-pad-wear/{{ .draft.ID }}" class="cart-icon" aria-label="Корзина ({{ len .draft.Items }} шт)" title="Brake pad wear — заявка № {{ .draft.ID }}">🧺<span class="cart-icon__count">{{ len .draft.Items }}</span></a>
+            {{ else }}
+            <span class="cart-icon cart-icon--disabled" aria-label="Корзина пуста" title="Добавьте услугу — создастся черновик заявки">🧺</span>
+            {{ end }}
+        </div>
         <div class="header-container">
             <a href="/" class="logo-block">
                 <img src="/static/img/logo.png" alt="BrakePad" class="logo-img">
                 <span class="logo-text"></span>
             </a>
-    
             <form action="/" method="GET" class="search-form">
                 <div class="search-input-wrapper">
                     <input type="text"
@@ -27,38 +33,20 @@
 
 <div class="space">
 
-    <!-- Карточка текущей заявки (черновик/корзина) -->
-    {{ if .draft }}
-    <a href="/applications/{{ .draft.ID }}" class="calculation-card">
-        <div class="calculation-card__title">Корзина (черновик)</div>
-        <div class="calculation-card__info">
-            <span>Заявка № <strong>{{ .draft.ID }}</strong></span>
-            <span>Позиций: <strong>{{ len .draft.Items }}</strong></span>
-        </div>
-        <form method="POST" action="/cart/delete" style="margin-top: 12px;">
-            <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">Удалить заявку</button>
-        </form>
-    </a>
-    {{ else }}
-    <div class="calculation-card" style="opacity:0.55; cursor:not-allowed;">
-        <div class="calculation-card__title">Корзина пуста</div>
-        <div class="calculation-card__info">
-            <span>Добавь услугу, чтобы создать заявку-черновик</span>
-        </div>
-    </div>
-    {{ end }}
-
-    <!-- Список колодок -->
+    <!-- Список услуг -->
     <div class="container">
         {{ range .services }}
-        <a href="/services/{{ .ID }}" class="card">
+        <a href="/brake-pad/{{ .ID }}" class="card">
             <img src="{{ $.minioBase }}/test/{{ .ImageURL }}"
                  onerror="this.src='/static/img/placeholder.svg'; this.onerror=null"
                  class="card__image">
             <div class="card__body">
                 <h2 class="card__title">{{ .Title }}</h2>
-                <p class="card__key-type">Тип: {{ .PadType }}</p>
-                <p class="card__response-time">Базовый ресурс: {{ .BaseResource }} км</p>
+                <div class="card__specs">
+                    <p class="card__key-type">Тип: {{ .PadType }}</p>
+                    <p class="card__response-time">Базовый ресурс: {{ .BaseResource }} км</p>
+                    <p class="card__response-time">Стиль вождения: {{ if .DrivingStyleHint }}{{ .DrivingStyleHint }}{{ else }}—{{ end }}</p>
+                </div>
                 <div class="card__use-case">
                     {{ .Price }} ₽
                 </div>
