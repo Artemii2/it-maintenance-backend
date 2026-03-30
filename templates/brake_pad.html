@@ -27,10 +27,9 @@
 
 <div class="detail-wrapper">
 
-    <div class="detail-card">
-        <!-- Видео сверху (как в примере), над всеми описаниями -->
-        <div class="detail-card__video-wrap">
-            <video class="detail-card__video"
+    <div class="detail-card detail-card--compact">
+        <div class="detail-card__media">
+            <video class="detail-card__media-video"
                    src="{{ .minioBase }}/test/{{ .strategy.VideoURL }}"
                    poster="{{ .minioBase }}/test/{{ .strategy.ImageURL }}"
                    autoplay
@@ -42,14 +41,13 @@
             </video>
         </div>
 
-        <!-- Описания под видео -->
         <div class="detail-card__content">
             <h1 class="detail-card__title">{{ .strategy.Title }}</h1>
 
-            <div class="detail-card__specs">
-                <p class="detail-card__spec-row">Тип: {{ .strategy.PadType }}</p>
-                <p class="detail-card__spec-row">Базовый ресурс: {{ .strategy.BaseResource }} км</p>
-                <p class="detail-card__spec-row">Стиль вождения: {{ if .strategy.DrivingStyleHint }}{{ .strategy.DrivingStyleHint }}{{ else }}—{{ end }}</p>
+            <div class="detail-card__badges">
+                <span class="detail-badge detail-badge--primary">Тип: {{ .strategy.PadType }}</span>
+                <span class="detail-badge">Ресурс: {{ .strategy.BaseResource }} км</span>
+                <span class="detail-badge">Стиль: {{ if .strategy.DrivingStyleHint }}{{ .strategy.DrivingStyleHint }}{{ else }}—{{ end }}</span>
             </div>
 
             <p class="detail-card__description">{{ .strategy.Description }}</p>

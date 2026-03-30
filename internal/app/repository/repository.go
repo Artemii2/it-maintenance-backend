@@ -217,7 +217,7 @@ func (r *Repository) AddServiceToDraft(userID, serviceID uint, qty int) (*Applic
 }
 
 // UpdateApplicationWearParams обновляет параметры расчёта износа у заявки пользователя.
-// Используется HTML-формой "Рассчитать" на странице заявки.
+// Вызывается при автоматической отправке формы на странице заявки (без кнопки «Рассчитать»).
 func (r *Repository) UpdateApplicationWearParams(appID, userID uint, drivingStyle string, mileage int) error {
 	updates := map[string]any{
 		"driving_style": drivingStyle,

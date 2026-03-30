@@ -40,21 +40,38 @@
             {{ if gt .app.Mileage 0 }}<div><strong>Пробег:</strong> {{ .app.Mileage }} км</div>{{ end }}
         </div>
 
-        <form method="POST" action="/brake-pad-wear/{{ .app.ID }}/recalc" style="margin-top: 12px;">
+        <form id="wear-recalc-form" method="POST" action="/brake-pad-wear/{{ .app.ID }}/recalc" style="margin-top: 12px;">
             <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                <input type="number" name="mileage" min="0" step="1"
+                <input id="wear-mileage" type="number" name="mileage" min="0" step="1"
                        value="{{ .app.Mileage }}"
                        class="comment-input"
                        style="max-width: 220px; height: 40px;"
-                       placeholder="Пробег, км">
-                <select name="driving_style" class="comment-input" style="max-width: 240px; height: 40px;">
+                       placeholder="Пробег, км"
+                       autocomplete="off"
+                       aria-label="Пробег, км">
+                <select id="wear-style" name="driving_style" class="comment-input" style="max-width: 240px; height: 40px;"
+                        aria-label="Стиль вождения">
                     <option value="Спокойный" {{ if eq .app.DrivingStyle "Спокойный" }}selected{{ end }}>Спокойный</option>
                     <option value="Спортивный" {{ if or (eq .app.DrivingStyle "Спортивный") (eq .app.DrivingStyle "") }}selected{{ end }}>Спортивный</option>
                     <option value="Агрессивный" {{ if eq .app.DrivingStyle "Агрессивный" }}selected{{ end }}>Агрессивный</option>
                 </select>
-                <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">Рассчитать</button>
             </div>
         </form>
+        <script>
+        (function () {
+            var form = document.getElementById('wear-recalc-form');
+            if (!form) return;
+            var mileage = document.getElementById('wear-mileage');
+            var style = document.getElementById('wear-style');
+            var t = null;
+            function submitSoon() {
+                if (t) clearTimeout(t);
+                t = setTimeout(function () { form.submit(); }, 450);
+            }
+            if (mileage) mileage.addEventListener('input', submitSoon);
+            if (style) style.addEventListener('change', function () { form.submit(); });
+        })();
+        </script>
 
         {{ if eq .app.Status "draft" }}
         <form method="POST" action="/cart/delete" style="margin-top: 12px;">
