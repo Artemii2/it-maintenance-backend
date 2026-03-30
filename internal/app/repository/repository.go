@@ -42,10 +42,10 @@ type BrakePadService struct {
 
 // BrakePadWear — заявка на расчёт износа колодок.
 type BrakePadWear struct {
-	ID          int
-	CarInfo     string  // описание автомобиля текстом
-	DrivingStyle string  // стиль вождения
-	Mileage      int     // пробег в км
+	ID           int
+	CarInfo      string // описание автомобиля текстом
+	DrivingStyle string // стиль вождения
+	Mileage      int    // пробег в км
 	Status       string
 
 	Items []BrakePadWearItem
@@ -53,9 +53,9 @@ type BrakePadWear struct {
 
 // BrakePadWearItem — связь заявки и услуги (м-м) с пробегом и результатом.
 type BrakePadWearItem struct {
-	Service       BrakePadService
-	Mileage       int     // пробег для этой услуги (км)
-	RemainingKM   float64 // результат: остаточный ресурс колодок в км
+	Service     BrakePadService
+	Mileage     int     // пробег для этой услуги (км)
+	RemainingKM float64 // результат: остаточный ресурс колодок в км
 }
 
 // =====================
@@ -65,43 +65,43 @@ type BrakePadWearItem struct {
 func (r *Repository) GetPads() ([]BrakePadService, error) {
 	pads := []BrakePadService{
 		{
-			ID:           1,
-			Title:        "Керамические тормозные колодки",
-			Description:  "Керамические колодки обеспечивают стабильное торможение, низкий уровень шума и минимальное пылеобразование. Отличаются увеличенным сроком службы.",
-			Image:        "ceramic.jpg",
-			Video:        "ceramic.MP4",
-			PadType:      "Керамические",
-			BaseResource: 60000,
+			ID:               1,
+			Title:            "Керамические тормозные колодки",
+			Description:      "Керамические колодки обеспечивают стабильное торможение, низкий уровень шума и минимальное пылеобразование. Отличаются увеличенным сроком службы.",
+			Image:            "ceramic.jpg",
+			Video:            "ceramic.MP4",
+			PadType:          "Керамические",
+			BaseResource:     60000,
 			DrivingStyleHint: "Спокойный и размеренный.",
-			CalmCoef:     1.0,
-			SportCoef:    0.85,
-			AggressiveCoef: 0.7,
+			CalmCoef:         1.0,
+			SportCoef:        0.85,
+			AggressiveCoef:   0.7,
 		},
 		{
-			ID:           2,
-			Title:        "Органические тормозные колодки",
-			Description:  "Органические колодки отличаются мягкой работой и доступной стоимостью. Подходят для спокойного городского режима.",
-			Image:        "organic.jpg",
-			Video:        "organic.MP4",
-			PadType:      "Органические",
-			BaseResource: 35000,
+			ID:               2,
+			Title:            "Органические тормозные колодки",
+			Description:      "Органические колодки отличаются мягкой работой и доступной стоимостью. Подходят для спокойного городского режима.",
+			Image:            "organic.jpg",
+			Video:            "organic.MP4",
+			PadType:          "Органические",
+			BaseResource:     35000,
 			DrivingStyleHint: "Спокойный.",
-			CalmCoef:     1.0,
-			SportCoef:    0.8,
-			AggressiveCoef: 0.6,
+			CalmCoef:         1.0,
+			SportCoef:        0.8,
+			AggressiveCoef:   0.6,
 		},
 		{
-			ID:           3,
-			Title:        "Полуметаллические тормозные колодки",
-			Description:  "Полуметаллические колодки обеспечивают эффективное торможение при высоких нагрузках и подходят для активной езды.",
-			Image:        "semi_metallic.jpg",
-			Video:        "semi_metallic.MP4",
-			PadType:      "Полуметаллические",
-			BaseResource: 45000,
+			ID:               3,
+			Title:            "Полуметаллические тормозные колодки",
+			Description:      "Полуметаллические колодки обеспечивают эффективное торможение при высоких нагрузках и подходят для активной езды.",
+			Image:            "semi_metallic.jpg",
+			Video:            "semi_metallic.MP4",
+			PadType:          "Полуметаллические",
+			BaseResource:     45000,
 			DrivingStyleHint: "Спортивный, размеренный.",
-			CalmCoef:     1.0,
-			SportCoef:    0.9,
-			AggressiveCoef: 0.75,
+			CalmCoef:         1.0,
+			SportCoef:        0.9,
+			AggressiveCoef:   0.75,
 		},
 	}
 
@@ -162,7 +162,7 @@ func getDrivingCoefficient(p BrakePadService, style string) float64 {
 // ПОСТРОЕНИЕ ЗАЯВКИ
 // =====================
 
-func (r *Repository) buildCalculation(id int, carInfo string, drivingStyle string, mileage int, padID int) (BrakePadWear, error) {
+func (r *Repository) buildCalculation(id int, drivingStyle string, mileage int, padID int) (BrakePadWear, error) {
 	pad, err := r.GetPad(padID)
 	if err != nil {
 		return BrakePadWear{}, err
@@ -183,8 +183,7 @@ func (r *Repository) buildCalculation(id int, carInfo string, drivingStyle strin
 	}
 
 	return BrakePadWear{
-		ID:          id,
-		CarInfo:     carInfo,
+		ID:           id,
 		DrivingStyle: drivingStyle,
 		Mileage:      mileage,
 		Status:       "Рассчитано",
@@ -199,7 +198,6 @@ func (r *Repository) buildCalculation(id int, carInfo string, drivingStyle strin
 func (r *Repository) GetCalculations() ([]BrakePadWear, error) {
 	calc, err := r.buildCalculation(
 		1,
-		"Kia Rio X-Line, 2020 г.",
 		"Спортивный",
 		20000,
 		1,
