@@ -5,98 +5,130 @@
 </head>
 <body>
 
-    <header class="main-header">
-        <div class="header-container">
-            <a href="/" class="logo-block">
-                <img src="/static/img/logo.png" alt="BrakePad" class="logo-img">
-                <span class="logo-text"></span>
-            </a>
-    
-            <form action="/" method="GET" class="search-form">
-                <div class="search-input-wrapper">
-                    <input type="text"
-                           name="query"
-                           class="search-input"
-                           placeholder="Поиск по типу колодок..."
-                           value="{{ .query }}">
-                </div>
-                <button type="submit" class="search-btn search-btn--icon" aria-label="Поиск"></button>
-            </form>
-        </div>
-    </header>
+<header class="main-header">
+    <div class="header-container">
+        <a href="/" class="logo-block">
+            <img src="/static/img/logo.png" alt="BrakePad" class="logo-img">
+            <span class="logo-text"></span>
+        </a>
+        <form action="/" method="GET" class="search-form">
+            <div class="search-input-wrapper">
+                <input type="text" name="query" class="search-input" placeholder="Поиск по типу колодок..." value="">
+            </div>
+            <button type="submit" class="search-btn search-btn--icon" aria-label="Поиск"></button>
+        </form>
+    </div>
+</header>
 
 <div class="calculation-detail">
 
-
     <div class="calculation-detail__header-card">
-        <h1 class="calculation-detail__title">
-            Заявка № {{ .app.ID }}
-        </h1>
+        <h1 class="calculation-detail__title">Заявка № {{ .app.ID }}</h1>
+    </div>
 
-        <div class="calculation-detail__info">
-            <div><strong>Статус:</strong> {{ .app.Status }}</div>
-            <div><strong>Создана:</strong> {{ .app.CreatedAt }}</div>
-            {{ if .app.DrivingStyle }}<div><strong>Стиль вождения:</strong> {{ .app.DrivingStyle }}</div>{{ end }}
-            {{ if gt .app.Mileage 0 }}<div><strong>Пробег:</strong> {{ .app.Mileage }} км</div>{{ end }}
-        </div>
+    <section class="wear-section">
+        <h2 class="wear-section__title">Данные заявки (ввод / хранение)</h2>
+        <dl class="wear-dl">
+            <div class="wear-dl__row"><dt>Статус</dt><dd>{{ .app.Status }}</dd></div>
+            <div class="wear-dl__row"><dt>Создана</dt><dd>{{ .app.CreatedAt }}</dd></div>
+            <div class="wear-dl__row"><dt>Сформирована</dt><dd>{{ if .app.FormedAt }}{{ .app.FormedAt }}{{ else }}—{{ end }}</dd></div>
+            <div class="wear-dl__row"><dt>Завершена</dt><dd>{{ if .app.CompletedAt }}{{ .app.CompletedAt }}{{ else }}—{{ end }}</dd></div>
+            <div class="wear-dl__row"><dt>Стиль вождения</dt><dd>{{ if .app.DrivingStyle }}{{ .app.DrivingStyle }}{{ else }}(не задан; считается как «Спортивный», k = 1){{ end }}</dd></div>
+            <div class="wear-dl__row"><dt>Пробег, км</dt><dd>{{ .app.Mileage }}</dd></div>
+            <div class="wear-dl__row"><dt>Коэффициент k по стилю</dt><dd>{{ printf "%.2f" .app.DrivingStyleCoeff }}</dd></div>
+        </dl>
+    </section>
 
-        <form method="POST" action="/brake-pad-wear/{{ .app.ID }}/recalc" style="margin-top: 12px;">
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                <input type="number" name="mileage" min="0" step="1"
-                       value="{{ .app.Mileage }}"
-                       class="comment-input"
-                       style="max-width: 220px; height: 40px;"
-                       placeholder="Пробег, км">
-                <select name="driving_style" class="comment-input" style="max-width: 240px; height: 40px;">
+    <section class="wear-section">
+        <h2 class="wear-section__title">Изменить параметры расчёта</h2>
+        <form id="wear-recalc-form" method="POST" action="/brake-pad-wear/{{ .app.ID }}/recalc">
+            <div class="wear-form-row">
+                <label for="wear-mileage">Пробег, км</label>
+                <input id="wear-mileage" type="number" name="mileage" min="0" step="1"
+                       value="{{ .app.Mileage }}" class="comment-input wear-input" autocomplete="off">
+                <label for="wear-style">Стиль вождения</label>
+                <select id="wear-style" name="driving_style" class="comment-input wear-input">
                     <option value="Спокойный" {{ if eq .app.DrivingStyle "Спокойный" }}selected{{ end }}>Спокойный</option>
                     <option value="Спортивный" {{ if or (eq .app.DrivingStyle "Спортивный") (eq .app.DrivingStyle "") }}selected{{ end }}>Спортивный</option>
                     <option value="Агрессивный" {{ if eq .app.DrivingStyle "Агрессивный" }}selected{{ end }}>Агрессивный</option>
                 </select>
-                <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">Рассчитать</button>
             </div>
         </form>
+        <script>
+        (function () {
+            var form = document.getElementById('wear-recalc-form');
+            if (!form) return;
+            var mileage = document.getElementById('wear-mileage');
+            var style = document.getElementById('wear-style');
+            var t = null;
+            function submitSoon() {
+                if (t) clearTimeout(t);
+                t = setTimeout(function () { form.submit(); }, 450);
+            }
+            if (mileage) mileage.addEventListener('input', submitSoon);
+            if (style) style.addEventListener('change', function () { form.submit(); });
+        })();
+        </script>
+    </section>
 
-        {{ if eq .app.Status "draft" }}
-        <form method="POST" action="/cart/delete" style="margin-top: 12px;">
-            <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">
-                Удалить заявку
-            </button>
+
+    <section class="wear-section">
+        <h2 class="wear-section__title">Итог по заявке</h2>
+        <dl class="wear-dl">
+            <div class="wear-dl__row"><dt>Минимальный остаток по услугам, км</dt><dd>{{ printf "%.0f" .app.MinRemainingKm }}</dd></div>
+            <div class="wear-dl__row"><dt>Минимальный остаток, %</dt><dd>{{ .app.MinRemainingPercent }}</dd></div>
+        </dl>
+    </section>
+
+    <section class="wear-section">
+        <h2 class="wear-section__title">Результат по каждой услуге (плоская таблица)</h2>
+        <table class="calc-table wear-table-flat">
+            <thead>
+            <tr>
+                <th>Фото</th>
+                <th>Услуга</th>
+                <th>Тип колодок</th>
+                <th>Базовый ресурс, км</th>
+                <th>k</th>
+                <th>Эффективный ресурс, км</th>
+                <th>Пробег заявки, км</th>
+                <th>Кол-во</th>
+                <th>Остаток, км</th>
+                <th>Остаток, %</th>
+                <th>Комментарий</th>
+            </tr>
+            </thead>
+            <tbody>
+            {{ range .app.Items }}
+            <tr>
+                <td>
+                    <img src="{{ $.minioBase }}/test/{{ .Service.ImageURL }}" alt=""
+                         onerror="this.src='/static/img/placeholder.svg'; this.onerror=null"
+                         class="calc-table__img">
+                </td>
+                <td>{{ .Service.Title }}</td>
+                <td>{{ .Service.PadType }}</td>
+                <td>{{ .Service.BaseResource }}</td>
+                <td>{{ printf "%.2f" $.app.DrivingStyleCoeff }}</td>
+                <td>{{ printf "%.0f" .EffectiveResourceKm }}</td>
+                <td>{{ $.app.Mileage }}</td>
+                <td>{{ .Quantity }}</td>
+                <td>{{ printf "%.0f" .RemainingKM }}</td>
+                <td>{{ .RemainingPercent }}</td>
+                <td><span class="wear-table-flat__comment">{{ .Comment }}</span></td>
+            </tr>
+            {{ end }}
+            </tbody>
+        </table>
+    </section>
+
+    {{ if eq .app.Status "draft" }}
+    <section class="wear-section">
+        <form method="POST" action="/cart/delete">
+            <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">Удалить заявку (черновик)</button>
         </form>
-        {{ end }}
-    </div>
-
-    <table class="calc-table">
-        <thead>
-        <tr>
-            <th>Изображение</th>
-            <th>Услуга</th>
-            <th>Кол-во</th>
-            <th>Остаток ресурса</th>
-            <th>Комментарий</th>
-        </tr>
-        </thead>
-        <tbody>
-        {{ range .app.Items }}
-        <tr>
-            <td>
-                <img src="{{ $.minioBase }}/test/{{ .Service.ImageURL }}"
-                     alt="{{ .Service.Title }}"
-                     onerror="this.src='/static/img/placeholder.svg'; this.onerror=null"
-                     class="calc-table__img">
-            </td>
-            <td>{{ .Service.Title }}</td>
-            <td>{{ .Quantity }}</td>
-            <td>
-                {{ printf "%.0f" .RemainingKM }} км<br>
-                {{ .RemainingPercent }}%
-            </td>
-            <td>
-                <textarea readonly class="comment-input" rows="2">{{ .Comment }}</textarea>
-            </td>
-        </tr>
-        {{ end }}
-        </tbody>
-    </table>
+    </section>
+    {{ end }}
 
 </div>
 

@@ -35,6 +35,7 @@ func StartServer() {
 	r.GET("/", h.GetServices)
 	// новые человекочитаемые URL под тему brake pad
 	r.GET("/brake-pad/:id", h.GetService)
+	r.GET("/applications", h.GetApplicationsList)
 	r.GET("/brake-pad-wear/:id", h.GetApplication)
 	r.POST("/brake-pad-wear/:id/recalc", h.RecalcWear)
 	// старые URL тоже оставляем, чтобы не ломать старые ссылки

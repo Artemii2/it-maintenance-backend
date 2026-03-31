@@ -7,11 +7,94 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"web_backend/internal/app/repository"
 )
 
 // =====================
 // REST API (лаб.3) — домен заявок (brake pad wear)
 // =====================
+
+// Плоские DTO без вложенного объекта service внутри строки (удобно для проверки и Postman).
+
+type applicationLineFlat struct {
+	ServiceID           uint    `json:"service_id"`
+	ServiceTitle        string  `json:"service_title"`
+	PadType             string  `json:"pad_type"`
+	BaseResourceKm      int     `json:"base_resource_km"`
+	DrivingStyleCoeff   float64 `json:"driving_style_coefficient"`
+	EffectiveResourceKm float64 `json:"effective_resource_km"`
+	MileageKm           int     `json:"mileage_km"`
+	Quantity            int     `json:"quantity"`
+	RemainingKm         float64 `json:"remaining_km"`
+	RemainingPercent    int     `json:"remaining_percent"`
+	Comment             string  `json:"comment"`
+}
+
+type applicationFlat struct {
+	ID                  uint                  `json:"id"`
+	Status              string                `json:"status"`
+	CreatedAt           time.Time             `json:"created_at"`
+	FormedAt            *time.Time            `json:"formed_at,omitempty"`
+	CompletedAt         *time.Time            `json:"completed_at,omitempty"`
+	DrivingStyle        string                `json:"driving_style"`
+	Mileage             int                   `json:"mileage"`
+	DrivingStyleCoeff   float64               `json:"driving_style_coefficient"`
+	TotalPrice          int                   `json:"total_price"`
+	ItemsCount          int                   `json:"items_count"`
+	MinRemainingKm      float64               `json:"min_remaining_km"`
+	MinRemainingPercent int                   `json:"min_remaining_percent"`
+	Lines               []applicationLineFlat `json:"lines"`
+}
+
+// applicationSummaryJSON — укороченный формат списка заявок, без вложенных Items/Service,
+// аналогичный примеру system_loads из методички.
+type applicationSummaryJSON struct {
+	ID                  uint      `json:"id"`
+	Status              string    `json:"status"`
+	CreatedAt           time.Time `json:"created_at"`
+	FormedAt            *time.Time `json:"formed_at,omitempty"`
+	CompletedAt         *time.Time `json:"completed_at,omitempty"`
+	DrivingStyle        string    `json:"driving_style"`
+	Mileage             int       `json:"mileage"`
+	TotalPrice          int       `json:"total_price"`
+	ItemsCount          int       `json:"items_count"`
+	MinRemainingKm      float64   `json:"min_remaining_km"`
+	MinRemainingPercent int       `json:"min_remaining_percent"`
+}
+
+func buildApplicationFlat(app *repository.Application) applicationFlat {
+	lines := make([]applicationLineFlat, 0, len(app.Items))
+	for _, it := range app.Items {
+		lines = append(lines, applicationLineFlat{
+			ServiceID:           it.ServiceID,
+			ServiceTitle:        it.Service.Title,
+			PadType:             it.Service.PadType,
+			BaseResourceKm:      it.Service.BaseResource,
+			DrivingStyleCoeff:   app.DrivingStyleCoeff,
+			EffectiveResourceKm: it.EffectiveResourceKm,
+			MileageKm:           app.Mileage,
+			Quantity:            it.Quantity,
+			RemainingKm:         it.RemainingKM,
+			RemainingPercent:    it.RemainingPercent,
+			Comment:             it.Comment,
+		})
+	}
+	return applicationFlat{
+		ID:                  app.ID,
+		Status:              app.Status,
+		CreatedAt:           app.CreatedAt,
+		FormedAt:            app.FormedAt,
+		CompletedAt:         app.CompletedAt,
+		DrivingStyle:        app.DrivingStyle,
+		Mileage:             app.Mileage,
+		DrivingStyleCoeff:   app.DrivingStyleCoeff,
+		TotalPrice:          app.TotalPrice,
+		ItemsCount:          len(app.Items),
+		MinRemainingKm:      app.MinRemainingKm,
+		MinRemainingPercent: app.MinRemainingPercent,
+		Lines:               lines,
+	}
+}
 
 // ApiGetApplications — GET /api/brake-pad-wear
 // Список заявок (кроме удалённых и черновиков) с фильтрацией по статусу
@@ -40,7 +123,25 @@ func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot load applications"})
 		return
 	}
-	ctx.JSON(http.StatusOK, apps)
+	out := make([]applicationSummaryJSON, 0, len(apps))
+	for i := range apps {
+		a := apps[i]
+		out = append(out, applicationSummaryJSON{
+			ID:                  a.ID,
+			Status:              a.Status,
+			CreatedAt:           a.CreatedAt,
+			FormedAt:            a.FormedAt,
+			CompletedAt:         a.CompletedAt,
+			DrivingStyle:        a.DrivingStyle,
+			Mileage:             a.Mileage,
+			TotalPrice:          a.TotalPrice,
+			ItemsCount:          a.ItemsCount,
+			MinRemainingKm:      a.MinRemainingKm,
+			MinRemainingPercent: a.MinRemainingPercent,
+		})
+	}
+	// Отдаём массив объектов, как в примере с system_loads.
+	ctx.JSON(http.StatusOK, out)
 }
 
 // ApiGetApplication — GET /api/brake-pad-wear/:id
@@ -58,7 +159,7 @@ func (h *Handler) ApiGetApplication(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
 		return
 	}
-	ctx.JSON(http.StatusOK, app)
+	ctx.JSON(http.StatusOK, buildApplicationFlat(app))
 }
 
 type updateApplicationRequest struct {
@@ -98,13 +199,18 @@ func (h *Handler) ApiUpdateApplication(ctx *gin.Context) {
 		return
 	}
 
-	app, err := h.Repository.UpdateApplicationForCreator(uint(id), userID, fields)
+	_, err = h.Repository.UpdateApplicationForCreator(uint(id), userID, fields)
 	if err != nil {
 		logrus.WithError(err).Error("api: update application error")
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update application"})
 		return
 	}
-	ctx.JSON(http.StatusOK, app)
+	app, err := h.Repository.GetApplicationByID(uint(id), userID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot reload application"})
+		return
+	}
+	ctx.JSON(http.StatusOK, buildApplicationFlat(app))
 }
 
 // ApiApproveApplication — POST /api/brake-pad-wear/:id/approve

@@ -47,7 +47,7 @@ type loginRequest struct {
 }
 
 // ApiLogin — POST /api/auth/login
-// Заглушка для 4-й лабораторной: не меняет singleton-пользователя, лишь возвращает успешный ответ.
+// Проверка логина и пароля в БД (без JWT/токена — только факт успешного входа и данные пользователя).
 func (h *Handler) ApiLogin(ctx *gin.Context) {
 	var req loginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -55,10 +55,20 @@ func (h *Handler) ApiLogin(ctx *gin.Context) {
 		return
 	}
 
-	// В реальном приложении здесь проверяли бы пароль и устанавливали cookie / токен.
+	u, err := h.Repository.GetUserByUsername(req.Username)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "неверный логин или пароль"})
+		return
+	}
+	if u.PasswordHash != req.Password {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "неверный логин или пароль"})
+		return
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
-		"message":  "login stub OK",
-		"username": req.Username,
+		"id":          u.ID,
+		"username":    u.Username,
+		"isModerator": u.IsModerator,
 	})
 }
 

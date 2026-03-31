@@ -45,6 +45,15 @@ func (r *Repository) CreateUser(username, passwordHash string, isModerator bool)
 	return u, nil
 }
 
+// GetUserByUsername — поиск пользователя по логину (для входа).
+func (r *Repository) GetUserByUsername(username string) (*User, error) {
+	var u User
+	if err := r.DB.Where("username = ?", username).First(&u).Error; err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
 type Service struct {
 	ID          uint   `gorm:"primaryKey"`
 	Title       string `gorm:"size:120;not null"`
@@ -80,7 +89,10 @@ type Application struct {
 	Items []ApplicationService `gorm:"foreignKey:ApplicationID"`
 
 	// вычисляемые поля только для отдачи в API (не хранятся в БД)
-	ItemsCount int `gorm:"-"`
+	ItemsCount            int     `gorm:"-"`
+	DrivingStyleCoeff     float64 `gorm:"-"` // k для формулы износа по стилю вождения
+	MinRemainingKm        float64 `gorm:"-"` // минимальный остаток по строкам заявки (итог «по теме»)
+	MinRemainingPercent   int     `gorm:"-"`
 }
 
 type ApplicationService struct {
@@ -95,8 +107,9 @@ type ApplicationService struct {
 	Service Service `gorm:"foreignKey:ServiceID"`
 
 	// расчётные поля для прогноза износа (не хранятся в БД)
-	RemainingKM      float64 `gorm:"-"`
-	RemainingPercent int     `gorm:"-"`
+	RemainingKM           float64 `gorm:"-"`
+	RemainingPercent      int     `gorm:"-"`
+	EffectiveResourceKm float64 `gorm:"-"` // base_resource * k
 }
 
 // =====================
@@ -201,7 +214,7 @@ func (r *Repository) FilterApplicationsForUser(
 	var apps []Application
 
 	q := r.DB.Model(&Application{}).
-		Preload("Items").
+		Preload("Items.Service").
 		Where("created_by_id = ? AND status NOT IN ('deleted', 'draft')", userID)
 
 	if status != "" {
@@ -219,6 +232,7 @@ func (r *Repository) FilterApplicationsForUser(
 	}
 
 	for i := range apps {
+		r.applyWearAndTotalPrice(&apps[i])
 		apps[i].ItemsCount = len(apps[i].Items)
 	}
 	return apps, nil
@@ -234,12 +248,16 @@ func (r *Repository) GetApplicationByID(appID uint, userID uint) (*Application, 
 		return nil, err
 	}
 
-	// Прогноз износа тормозных колодок.
-	// Для каждой услуги в заявке считаем:
-	// исходный ресурс = base_resource * coef(стиль вождения)
-	// остаток (км)    = max(0, исходный ресурс - пробег)
-	// остаток (%)     = max(0, округление(остаток / исходный ресурс * 100))
+	r.applyWearAndTotalPrice(&app)
+	return &app, nil
+}
+
+// applyWearAndTotalPrice — прогноз износа по теме «brake pad wear» и сумма по услугам.
+// Формула на строку: effective = base_resource * k(стиль); остаток км = max(0, effective − пробег);
+// остаток % = round(остаток / effective * 100).
+func (r *Repository) applyWearAndTotalPrice(app *Application) {
 	coef := drivingStyleCoef(app.DrivingStyle)
+	app.DrivingStyleCoeff = coef
 	mileage := float64(app.Mileage)
 
 	total := 0
@@ -247,6 +265,7 @@ func (r *Repository) GetApplicationByID(appID uint, userID uint) (*Application, 
 		base := float64(app.Items[i].Service.BaseResource)
 		if base > 0 {
 			initial := base * coef
+			app.Items[i].EffectiveResourceKm = initial
 			remaining := initial - mileage
 			if remaining < 0 {
 				remaining = 0
@@ -262,17 +281,32 @@ func (r *Repository) GetApplicationByID(appID uint, userID uint) (*Application, 
 			}
 		}
 
-		// параллельно считаем total_price, чтобы не ломать REST-логику
 		total += app.Items[i].Service.Price * app.Items[i].Quantity
 	}
 	app.TotalPrice = total
 
-	// По ТЗ: одно из полей рассчитывается при завершении заявки.
-	// Поэтому в БД фиксируем total_price только для статуса "completed".
+	minKm := math.MaxFloat64
+	minPct := 101
+	for _, it := range app.Items {
+		if it.RemainingKM < minKm {
+			minKm = it.RemainingKM
+		}
+		if it.RemainingPercent < minPct {
+			minPct = it.RemainingPercent
+		}
+	}
+	if minKm == math.MaxFloat64 {
+		minKm = 0
+	}
+	if minPct == 101 {
+		minPct = 0
+	}
+	app.MinRemainingKm = minKm
+	app.MinRemainingPercent = minPct
+
 	if app.Status == "completed" {
 		_ = r.DB.Model(&Application{}).Where("id = ?", app.ID).Update("total_price", total).Error
 	}
-	return &app, nil
 }
 
 func (r *Repository) AddServiceToDraft(userID, serviceID uint, qty int) (*Application, error) {
@@ -325,7 +359,7 @@ func (r *Repository) AddServiceToDraft(userID, serviceID uint, qty int) (*Applic
 }
 
 // UpdateApplicationWearParams обновляет параметры расчёта износа у заявки пользователя.
-// Используется HTML-формой "Рассчитать" на странице заявки.
+// Вызывается при автоматической отправке формы на странице заявки (без кнопки «Рассчитать»).
 func (r *Repository) UpdateApplicationWearParams(appID, userID uint, drivingStyle string, mileage int) error {
 	updates := map[string]any{
 		"driving_style": drivingStyle,

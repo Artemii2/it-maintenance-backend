@@ -77,6 +77,21 @@ func (h *Handler) GetServices(ctx *gin.Context) {
 	})
 }
 
+// GetApplicationsList — HTML: все заявки пользователя (кроме черновика и удалённых), плоская таблица.
+func (h *Handler) GetApplicationsList(ctx *gin.Context) {
+	userID := h.currentUserID(ctx)
+	apps, err := h.Repository.FilterApplicationsForUser(userID, "", nil, nil)
+	if err != nil {
+		logrus.WithError(err).Error("applications list page error")
+		apps = nil
+	}
+	ctx.HTML(http.StatusOK, "brake-pad-list.html", gin.H{
+		"total":     len(apps),
+		"apps":      apps,
+		"minioBase": h.minioBase(ctx),
+	})
+}
+
 // GetService — страница конкретной услуги
 func (h *Handler) GetService(ctx *gin.Context) {
 	idStr := ctx.Param("id")
