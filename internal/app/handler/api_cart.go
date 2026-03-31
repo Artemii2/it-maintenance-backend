@@ -13,8 +13,20 @@ import (
 
 // ApiGetCartIcon — GET /api/brake-pad-wear/cart-icon
 // Возвращает id черновой заявки и количество услуг в ней.
+// @Summary Get cart icon info
+// @Tags cart
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {object} map[string]any
+// @Failure 401 {object} map[string]any
+// @Failure 500 {object} map[string]any
+// @Router /brake-pad-wear/cart-icon [get]
 func (h *Handler) ApiGetCartIcon(ctx *gin.Context) {
-	userID := singletonUserID()
+	userID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	app, count, err := h.Repository.GetCartInfo(userID)
 	if err != nil {
 		logrus.WithError(err).Error("api: cart icon error")
@@ -42,8 +54,23 @@ type addToCartRequest struct {
 // ApiAddToCart — POST /api/brake-pad-wear/cart/items
 // Добавляет услугу в заявку-черновик текущего пользователя.
 // Если черновика нет — он создаётся автоматически.
+// @Summary Add item to draft application
+// @Tags cart
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param payload body addToCartRequest true "item payload"
+// @Success 200 {object} repository.Application
+// @Failure 400 {object} map[string]any
+// @Failure 401 {object} map[string]any
+// @Failure 500 {object} map[string]any
+// @Router /brake-pad-wear/cart/items [post]
 func (h *Handler) ApiAddToCart(ctx *gin.Context) {
-	userID := singletonUserID()
+	userID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	var req addToCartRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil || req.ServiceID == 0 {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})

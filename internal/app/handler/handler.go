@@ -44,11 +44,6 @@ func (h *Handler) minioBase(ctx *gin.Context) string {
 	return fmt.Sprintf("http://%s:9000", hostOnly)
 }
 
-// singletonUserID — фиксированный пользователь для всех REST-запросов (по ТЗ).
-func singletonUserID() uint {
-	return 1
-}
-
 // =====================
 // HTML-обработчики (лаб.1-2)
 // =====================

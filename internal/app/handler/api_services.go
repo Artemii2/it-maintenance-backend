@@ -18,6 +18,15 @@ import (
 //   - title   — подстрока в названии/описании
 //   - padType — точное совпадение типа колодок
 //   - status  — статус (по умолчанию все кроме deleted)
+// @Summary List services (guest доступ)
+// @Tags services
+// @Produce json
+// @Param title query string false "title substring"
+// @Param padType query string false "pad type"
+// @Param status query string false "status"
+// @Success 200 {array} repository.Service
+// @Failure 500 {object} map[string]any
+// @Router /brake-pad [get]
 func (h *Handler) ApiGetServices(ctx *gin.Context) {
 	title := ctx.Query("title")
 	padType := ctx.Query("padType")
@@ -34,6 +43,14 @@ func (h *Handler) ApiGetServices(ctx *gin.Context) {
 }
 
 // ApiGetService — GET /api/brake-pad/:id
+// @Summary Get service
+// @Tags services
+// @Produce json
+// @Param id path int true "service id"
+// @Success 200 {object} repository.Service
+// @Failure 400 {object} map[string]any
+// @Failure 404 {object} map[string]any
+// @Router /brake-pad/{id} [get]
 func (h *Handler) ApiGetService(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -59,12 +76,22 @@ type createServiceRequest struct {
 	VideoURL     string `json:"video_url"`
 	PadType      string `json:"pad_type"      binding:"required"`
 	BaseResource int    `json:"base_resource" binding:"required"`
-	Price        int    `json:"price"         binding:"required"`
 }
 
 // ApiCreateService — POST /api/brake-pad
 // Ожидает JSON с данными услуги. Поля image_url и video_url содержат ИМЕНА файлов,
 // которые заранее загружены в MinIO.
+// @Summary Create service (auth)
+// @Tags services
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param payload body createServiceRequest true "service"
+// @Success 201 {object} repository.Service
+// @Failure 400 {object} map[string]any
+// @Failure 401 {object} map[string]any
+// @Failure 500 {object} map[string]any
+// @Router /brake-pad [post]
 func (h *Handler) ApiCreateService(ctx *gin.Context) {
 	var req createServiceRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -80,7 +107,6 @@ func (h *Handler) ApiCreateService(ctx *gin.Context) {
 		VideoURL:     req.VideoURL,
 		PadType:      req.PadType,
 		BaseResource: req.BaseResource,
-		Price:        req.Price,
 	}
 
 	if err := h.Repository.CreateService(svc); err != nil {

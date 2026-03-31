@@ -7,7 +7,11 @@ import (
 	"web_backend/internal/app/repository"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/sirupsen/logrus"
+
+	_ "web_backend/docs"
 )
 
 // StartServer инициализирует репозиторий, обработчики и запускает HTTP-сервер.
@@ -23,13 +27,25 @@ func StartServer() {
 		logrus.WithError(err).Fatal("DB migration error")
 	}
 
-	repo := repository.NewRepository(gormDB)
+	redisClient, err := connectRedis()
+	if err != nil {
+		logrus.WithError(err).Fatal("Redis connection error")
+	}
+
+	repo := repository.NewRepository(gormDB, redisClient)
 	h := handler.NewHandler(repo, sqlDB)
 
 	r := gin.Default()
 
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./resources")
+
+	// Swagger
+	swaggerURL := ginSwagger.URL("/swagger/doc.json")
+	r.Any("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, swaggerURL))
+	r.GET("/swagger", func(c *gin.Context) {
+		c.Redirect(301, "/swagger/index.html")
+	})
 
 	// HTML-интерфейс (из предыдущих лабораторных)
 	r.GET("/", h.GetServices)
@@ -47,32 +63,35 @@ func StartServer() {
 	// REST API для SPA (лаб.3)
 	api := r.Group("/api")
 	{
-		// домен услуг (brake pad)
-		api.GET("/brake-pad", h.ApiGetServices)
-		api.GET("/brake-pad/:id", h.ApiGetService)
-		api.POST("/brake-pad", h.ApiCreateService)
-
-		// домен заявок brake pad wear и корзины
-		api.GET("/brake-pad-wear/cart-icon", h.ApiGetCartIcon)
-		api.POST("/brake-pad-wear/cart/items", h.ApiAddToCart)
-
-		api.GET("/brake-pad-wear", h.ApiGetApplications)
-		api.GET("/brake-pad-wear/:id", h.ApiGetApplication)
-		api.PUT("/brake-pad-wear/:id", h.ApiUpdateApplication)
-		// завершение сформированной заявки (аналог finish)
-		api.PUT("/brake-pad-wear/:id/finish", h.ApiFinishApplication)
-		// отклонение сформированной заявки модератором
-		api.PUT("/brake-pad-wear/:id/reject", h.ApiRejectApplication)
-		api.DELETE("/brake-pad-wear/:id", h.ApiDeleteApplication)
-
-		// домен м-м заявки-услуги brake pad wear
-		api.PUT("/brake-pad-wear/:id/items/:serviceId", h.ApiUpdateApplicationItem)
-		api.DELETE("/brake-pad-wear/:id/items/:serviceId", h.ApiDeleteApplicationItem)
-
-		// домен пользователя / аутентификации (заглушки для ЛР4)
+		// Гость: регистрация/логин и чтение каталога
 		api.POST("/users/register", h.ApiRegisterUser)
 		api.POST("/auth/login", h.ApiLogin)
-		api.POST("/auth/logout", h.ApiLogout)
+
+		api.GET("/brake-pad", h.ApiGetServices)
+		api.GET("/brake-pad/:id", h.ApiGetService)
+
+		// Авторизованный пользователь
+		authorized := api.Group("/")
+		authorized.Use(h.RequireAuth())
+		authorized.POST("/auth/logout", h.ApiLogout)
+
+		authorized.POST("/brake-pad", h.ApiCreateService)
+		authorized.GET("/brake-pad-wear/cart-icon", h.ApiGetCartIcon)
+		authorized.POST("/brake-pad-wear/cart/items", h.ApiAddToCart)
+
+		authorized.GET("/brake-pad-wear", h.ApiGetApplications)
+		authorized.GET("/brake-pad-wear/:id", h.ApiGetApplication)
+		authorized.PUT("/brake-pad-wear/:id", h.ApiUpdateApplication)
+		authorized.DELETE("/brake-pad-wear/:id", h.ApiDeleteApplication)
+
+		authorized.PUT("/brake-pad-wear/:id/items/:serviceId", h.ApiUpdateApplicationItem)
+		authorized.DELETE("/brake-pad-wear/:id/items/:serviceId", h.ApiDeleteApplicationItem)
+
+		// Только модератор
+		moderator := authorized.Group("/")
+		moderator.Use(h.RequireModerator())
+		moderator.PUT("/brake-pad-wear/:id/finish", h.ApiFinishApplication)
+		moderator.PUT("/brake-pad-wear/:id/reject", h.ApiRejectApplication)
 	}
 
 	// слушаем на всех интерфейсах, чтобы можно было открыть с телефона

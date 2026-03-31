@@ -14,7 +14,11 @@ import (
 
 // ApiDeleteApplicationItem — DELETE /api/brake-pad-wear/:id/items/:serviceId
 func (h *Handler) ApiDeleteApplicationItem(ctx *gin.Context) {
-	userID := singletonUserID()
+	userID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	appID, err1 := strconv.Atoi(ctx.Param("id"))
 	svcID, err2 := strconv.Atoi(ctx.Param("serviceId"))
 	if err1 != nil || err2 != nil || appID <= 0 || svcID <= 0 {
@@ -37,7 +41,11 @@ type updateItemRequest struct {
 
 // ApiUpdateApplicationItem — PUT /api/brake-pad-wear/:id/items/:serviceId
 func (h *Handler) ApiUpdateApplicationItem(ctx *gin.Context) {
-	userID := singletonUserID()
+	userID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	appID, err1 := strconv.Atoi(ctx.Param("id"))
 	svcID, err2 := strconv.Atoi(ctx.Param("serviceId"))
 	if err1 != nil || err2 != nil || appID <= 0 || svcID <= 0 {

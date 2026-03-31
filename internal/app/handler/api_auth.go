@@ -2,9 +2,11 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // =====================
@@ -19,6 +21,14 @@ type registerUserRequest struct {
 
 // ApiRegisterUser — POST /api/users/register
 // Реальная авторизация пока не нужна, но регистрация создаёт запись в таблице users.
+// @Summary Register user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body registerUserRequest true "register payload"
+// @Success 201 {object} map[string]any
+// @Failure 400 {object} map[string]any
+// @Router /users/register [post]
 func (h *Handler) ApiRegisterUser(ctx *gin.Context) {
 	var req registerUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -47,7 +57,16 @@ type loginRequest struct {
 }
 
 // ApiLogin — POST /api/auth/login
-// Проверка логина и пароля в БД (без JWT/токена — только факт успешного входа и данные пользователя).
+// Возвращает JWT (Bearer) для остальных запросов.
+// @Summary Login
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body loginRequest true "login payload"
+// @Success 200 {object} map[string]any
+// @Failure 400 {object} map[string]any
+// @Failure 401 {object} map[string]any
+// @Router /auth/login [post]
 func (h *Handler) ApiLogin(ctx *gin.Context) {
 	var req loginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -65,18 +84,64 @@ func (h *Handler) ApiLogin(ctx *gin.Context) {
 		return
 	}
 
+	now := time.Now()
+	claims := authClaims{
+		UserID:      u.ID,
+		IsModerator: u.IsModerator,
+		RegisteredClaims: jwt.RegisteredClaims{
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenStr, err := token.SignedString(h.jwtKey())
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot sign token"})
+		return
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
-		"id":          u.ID,
-		"username":    u.Username,
-		"isModerator": u.IsModerator,
+		"token": tokenStr,
+		"user": gin.H{
+			"id":          u.ID,
+			"username":    u.Username,
+			"isModerator": u.IsModerator,
+		},
 	})
 }
 
 // ApiLogout — POST /api/auth/logout
-// Заглушка: просто подтверждает выход.
+// Добавляет JWT в blacklist Redis до истечения срока.
+// @Summary Logout (blacklist token)
+// @Tags auth
+// @Security ApiKeyAuth
+// @Produce json
+// @Success 200 {object} map[string]any
+// @Failure 401 {object} map[string]any
+// @Failure 500 {object} map[string]any
+// @Router /auth/logout [post]
 func (h *Handler) ApiLogout(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
-		"message": "logout stub OK",
+	tokenStr := extractBearerToken(ctx)
+	if tokenStr == "" {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	claims := &authClaims{}
+	tok, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
+		return h.jwtKey(), nil
 	})
+	if err != nil || tok == nil || !tok.Valid || claims.ExpiresAt == nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	if err := h.Repository.BlacklistJWT(ctx, tokenStr, claims.ExpiresAt.Time); err != nil {
+		logrus.WithError(err).Error("api: blacklist token error")
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot logout"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "logged out"})
 }
 

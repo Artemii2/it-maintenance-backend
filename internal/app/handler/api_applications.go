@@ -39,7 +39,6 @@ type applicationFlat struct {
 	DrivingStyle        string                `json:"driving_style"`
 	Mileage             int                   `json:"mileage"`
 	DrivingStyleCoeff   float64               `json:"driving_style_coefficient"`
-	TotalPrice          int                   `json:"total_price"`
 	ItemsCount          int                   `json:"items_count"`
 	MinRemainingKm      float64               `json:"min_remaining_km"`
 	MinRemainingPercent int                   `json:"min_remaining_percent"`
@@ -56,7 +55,6 @@ type applicationSummaryJSON struct {
 	CompletedAt         *time.Time `json:"completed_at,omitempty"`
 	DrivingStyle        string    `json:"driving_style"`
 	Mileage             int       `json:"mileage"`
-	TotalPrice          int       `json:"total_price"`
 	ItemsCount          int       `json:"items_count"`
 	MinRemainingKm      float64   `json:"min_remaining_km"`
 	MinRemainingPercent int       `json:"min_remaining_percent"`
@@ -88,7 +86,6 @@ func buildApplicationFlat(app *repository.Application) applicationFlat {
 		DrivingStyle:        app.DrivingStyle,
 		Mileage:             app.Mileage,
 		DrivingStyleCoeff:   app.DrivingStyleCoeff,
-		TotalPrice:          app.TotalPrice,
 		ItemsCount:          len(app.Items),
 		MinRemainingKm:      app.MinRemainingKm,
 		MinRemainingPercent: app.MinRemainingPercent,
@@ -99,8 +96,23 @@ func buildApplicationFlat(app *repository.Application) applicationFlat {
 // ApiGetApplications — GET /api/brake-pad-wear
 // Список заявок (кроме удалённых и черновиков) с фильтрацией по статусу
 // и диапазону даты формирования.
+// @Summary List applications
+// @Tags applications
+// @Security ApiKeyAuth
+// @Produce json
+// @Param status query string false "status"
+// @Param formed_from query string false "formed_from (YYYY-MM-DD)"
+// @Param formed_to query string false "formed_to (YYYY-MM-DD)"
+// @Success 200 {array} applicationSummaryJSON
+// @Failure 401 {object} map[string]any
+// @Failure 500 {object} map[string]any
+// @Router /brake-pad-wear [get]
 func (h *Handler) ApiGetApplications(ctx *gin.Context) {
-	userID := singletonUserID()
+	userID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	status := ctx.Query("status")
 	fromStr := ctx.Query("formed_from")
 	toStr := ctx.Query("formed_to")
@@ -117,7 +129,15 @@ func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 		}
 	}
 
-	apps, err := h.Repository.FilterApplicationsForUser(userID, status, fromPtr, toPtr)
+	isModAny, _ := ctx.Get("is_moderator")
+	isMod, _ := isModAny.(bool)
+
+	var apps []repository.Application
+	if isMod {
+		apps, err = h.Repository.FilterApplicationsForModerator(status, fromPtr, toPtr)
+	} else {
+		apps, err = h.Repository.FilterApplicationsForUser(userID, status, fromPtr, toPtr)
+	}
 	if err != nil {
 		logrus.WithError(err).Error("api: applications list error")
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot load applications"})
@@ -134,7 +154,6 @@ func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 			CompletedAt:         a.CompletedAt,
 			DrivingStyle:        a.DrivingStyle,
 			Mileage:             a.Mileage,
-			TotalPrice:          a.TotalPrice,
 			ItemsCount:          a.ItemsCount,
 			MinRemainingKm:      a.MinRemainingKm,
 			MinRemainingPercent: a.MinRemainingPercent,
@@ -145,8 +164,22 @@ func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 }
 
 // ApiGetApplication — GET /api/brake-pad-wear/:id
+// @Summary Get application by id
+// @Tags applications
+// @Security ApiKeyAuth
+// @Produce json
+// @Param id path int true "application id"
+// @Success 200 {object} applicationFlat
+// @Failure 400 {object} map[string]any
+// @Failure 401 {object} map[string]any
+// @Failure 404 {object} map[string]any
+// @Router /brake-pad-wear/{id} [get]
 func (h *Handler) ApiGetApplication(ctx *gin.Context) {
-	userID := singletonUserID()
+	userID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -154,7 +187,15 @@ func (h *Handler) ApiGetApplication(ctx *gin.Context) {
 		return
 	}
 
-	app, err := h.Repository.GetApplicationByID(uint(id), userID)
+	isModAny, _ := ctx.Get("is_moderator")
+	isMod, _ := isModAny.(bool)
+
+	var app *repository.Application
+	if isMod {
+		app, err = h.Repository.GetApplicationByIDForModerator(uint(id))
+	} else {
+		app, err = h.Repository.GetApplicationByID(uint(id), userID)
+	}
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
 		return
@@ -169,8 +210,24 @@ type updateApplicationRequest struct {
 }
 
 // ApiUpdateApplication — PUT /api/brake-pad-wear/:id
+// @Summary Update application fields (creator)
+// @Tags applications
+// @Security ApiKeyAuth
+// @Accept json
+// @Produce json
+// @Param id path int true "application id"
+// @Param payload body updateApplicationRequest true "fields"
+// @Success 200 {object} applicationFlat
+// @Failure 400 {object} map[string]any
+// @Failure 401 {object} map[string]any
+// @Failure 500 {object} map[string]any
+// @Router /brake-pad-wear/{id} [put]
 func (h *Handler) ApiUpdateApplication(ctx *gin.Context) {
-	userID := singletonUserID()
+	userID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -215,6 +272,11 @@ func (h *Handler) ApiUpdateApplication(ctx *gin.Context) {
 
 // ApiApproveApplication — POST /api/brake-pad-wear/:id/approve
 func (h *Handler) ApiApproveApplication(ctx *gin.Context) {
+	moderatorID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -222,8 +284,6 @@ func (h *Handler) ApiApproveApplication(ctx *gin.Context) {
 		return
 	}
 
-	// в учебной работе считаем, что модератор с id=2
-	const moderatorID = uint(2)
 	app, err := h.Repository.SetApplicationStatus(uint(id), "completed", moderatorID)
 	if err != nil {
 		logrus.WithError(err).Error("api: approve application error")
@@ -235,6 +295,11 @@ func (h *Handler) ApiApproveApplication(ctx *gin.Context) {
 
 // ApiRejectApplication — POST /api/brake-pad-wear/:id/reject
 func (h *Handler) ApiRejectApplication(ctx *gin.Context) {
+	moderatorID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -242,7 +307,6 @@ func (h *Handler) ApiRejectApplication(ctx *gin.Context) {
 		return
 	}
 
-	const moderatorID = uint(2)
 	app, err := h.Repository.SetApplicationStatus(uint(id), "rejected", moderatorID)
 	if err != nil {
 		logrus.WithError(err).Error("api: reject application error")
@@ -256,6 +320,11 @@ func (h *Handler) ApiRejectApplication(ctx *gin.Context) {
 // Аналог PUT /api/.../{id}/finish из примера: переводит сформированную заявку
 // в статус completed от имени модератора.
 func (h *Handler) ApiFinishApplication(ctx *gin.Context) {
+	moderatorID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -263,7 +332,6 @@ func (h *Handler) ApiFinishApplication(ctx *gin.Context) {
 		return
 	}
 
-	const moderatorID = uint(2)
 	app, err := h.Repository.SetApplicationStatus(uint(id), "completed", moderatorID)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -273,8 +341,21 @@ func (h *Handler) ApiFinishApplication(ctx *gin.Context) {
 }
 
 // ApiDeleteApplication — DELETE /api/brake-pad-wear/:id
+// @Summary Soft delete application (creator)
+// @Tags applications
+// @Security ApiKeyAuth
+// @Param id path int true "application id"
+// @Success 204
+// @Failure 400 {object} map[string]any
+// @Failure 401 {object} map[string]any
+// @Failure 500 {object} map[string]any
+// @Router /brake-pad-wear/{id} [delete]
 func (h *Handler) ApiDeleteApplication(ctx *gin.Context) {
-	userID := singletonUserID()
+	userID, err := userIDFromCtx(ctx)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {

@@ -1,0 +1,640 @@
+definitions:
+  handler.addToCartRequest:
+    properties:
+      quantity:
+        type: integer
+      service_id:
+        type: integer
+    required:
+    - service_id
+    type: object
+  handler.applicationFlat:
+    properties:
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      driving_style:
+        type: string
+      driving_style_coefficient:
+        type: number
+      formed_at:
+        type: string
+      id:
+        type: integer
+      items_count:
+        type: integer
+      lines:
+        items:
+          $ref: '#/definitions/handler.applicationLineFlat'
+        type: array
+      mileage:
+        type: integer
+      min_remaining_km:
+        type: number
+      min_remaining_percent:
+        type: integer
+      status:
+        type: string
+    type: object
+  handler.applicationLineFlat:
+    properties:
+      base_resource_km:
+        type: integer
+      comment:
+        type: string
+      driving_style_coefficient:
+        type: number
+      effective_resource_km:
+        type: number
+      mileage_km:
+        type: integer
+      pad_type:
+        type: string
+      quantity:
+        type: integer
+      remaining_km:
+        type: number
+      remaining_percent:
+        type: integer
+      service_id:
+        type: integer
+      service_title:
+        type: string
+    type: object
+  handler.applicationSummaryJSON:
+    properties:
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      driving_style:
+        type: string
+      formed_at:
+        type: string
+      id:
+        type: integer
+      items_count:
+        type: integer
+      mileage:
+        type: integer
+      min_remaining_km:
+        type: number
+      min_remaining_percent:
+        type: integer
+      status:
+        type: string
+    type: object
+  handler.createServiceRequest:
+    properties:
+      base_resource:
+        type: integer
+      description:
+        type: string
+      image_url:
+        type: string
+      pad_type:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      video_url:
+        type: string
+    required:
+    - base_resource
+    - description
+    - pad_type
+    - title
+    type: object
+  handler.loginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  handler.registerUserRequest:
+    properties:
+      is_moderator:
+        type: boolean
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  handler.updateApplicationRequest:
+    properties:
+      driving_style:
+        type: string
+      mileage:
+        type: integer
+      status:
+        type: string
+    type: object
+  repository.Application:
+    properties:
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      createdBy:
+        $ref: '#/definitions/repository.User'
+      createdByID:
+        type: integer
+      drivingStyle:
+        type: string
+      drivingStyleCoeff:
+        description: k для формулы износа по стилю вождения
+        type: number
+      formedAt:
+        type: string
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/repository.ApplicationService'
+        type: array
+      itemsCount:
+        description: вычисляемые поля только для отдачи в API (не хранятся в БД)
+        type: integer
+      mileage:
+        type: integer
+      minRemainingKm:
+        description: минимальный остаток по строкам заявки (итог «по теме»)
+        type: number
+      minRemainingPercent:
+        type: integer
+      moderator:
+        $ref: '#/definitions/repository.User'
+      moderatorID:
+        type: integer
+      status:
+        description: draft/deleted/formed/completed/rejected
+        type: string
+      totalPrice:
+        description: расчётное поле (например, при завершении заявки)
+        type: integer
+    type: object
+  repository.ApplicationService:
+    properties:
+      applicationID:
+        type: integer
+      comment:
+        type: string
+      effectiveResourceKm:
+        description: base_resource * k
+        type: number
+      isPrimary:
+        type: boolean
+      position:
+        type: integer
+      quantity:
+        type: integer
+      remainingKM:
+        description: расчётные поля для прогноза износа (не хранятся в БД)
+        type: number
+      remainingPercent:
+        type: integer
+      service:
+        $ref: '#/definitions/repository.Service'
+      serviceID:
+        type: integer
+    type: object
+  repository.Service:
+    properties:
+      baseResource:
+        type: integer
+      description:
+        type: string
+      drivingStyleHint:
+        type: string
+      id:
+        type: integer
+      imageURL:
+        type: string
+      padType:
+        type: string
+      price:
+        type: integer
+      status:
+        description: active/deleted
+        type: string
+      title:
+        type: string
+      videoURL:
+        type: string
+    type: object
+  repository.User:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      isModerator:
+        type: boolean
+      passwordHash:
+        type: string
+      username:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: login payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Logout (blacklist token)
+      tags:
+      - auth
+  /brake-pad:
+    get:
+      parameters:
+      - description: title substring
+        in: query
+        name: title
+        type: string
+      - description: pad type
+        in: query
+        name: padType
+        type: string
+      - description: status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/repository.Service'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List services (guest доступ)
+      tags:
+      - services
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: service
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.createServiceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/repository.Service'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Create service (auth)
+      tags:
+      - services
+  /brake-pad-wear:
+    get:
+      parameters:
+      - description: status
+        in: query
+        name: status
+        type: string
+      - description: formed_from (YYYY-MM-DD)
+        in: query
+        name: formed_from
+        type: string
+      - description: formed_to (YYYY-MM-DD)
+        in: query
+        name: formed_to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handler.applicationSummaryJSON'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List applications
+      tags:
+      - applications
+  /brake-pad-wear/{id}:
+    delete:
+      parameters:
+      - description: application id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Soft delete application (creator)
+      tags:
+      - applications
+    get:
+      parameters:
+      - description: application id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.applicationFlat'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get application by id
+      tags:
+      - applications
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: application id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: fields
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.updateApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.applicationFlat'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Update application fields (creator)
+      tags:
+      - applications
+  /brake-pad-wear/cart-icon:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get cart icon info
+      tags:
+      - cart
+  /brake-pad-wear/cart/items:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: item payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.addToCartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/repository.Application'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Add item to draft application
+      tags:
+      - cart
+  /brake-pad/{id}:
+    get:
+      parameters:
+      - description: service id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/repository.Service'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get service
+      tags:
+      - services
+  /users/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: register payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.registerUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register user
+      tags:
+      - auth
+swagger: "2.0"

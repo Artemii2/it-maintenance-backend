@@ -1,10 +1,14 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
+	"strconv"
+	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/pressly/goose/v3"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -42,6 +46,30 @@ func connectDB() (*sql.DB, *gorm.DB, error) {
 func runMigrations(db *sql.DB) error {
 	goose.SetDialect("postgres")
 	return goose.Up(db, "migrations")
+}
+
+func connectRedis() (*redis.Client, error) {
+	addr := getenv("REDIS_ADDR", "127.0.0.1:6379")
+	password := getenv("REDIS_PASSWORD", "")
+	dbStr := getenv("REDIS_DB", "0")
+	dbNum := 0
+	if n, err := strconv.Atoi(dbStr); err == nil && n >= 0 {
+		dbNum = n
+	}
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       dbNum,
+	})
+
+	// проверка соединения
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		return nil, err
+	}
+	return rdb, nil
 }
 
 func getenv(key, fallback string) string {

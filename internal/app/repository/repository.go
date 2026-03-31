@@ -1,23 +1,26 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 // Repository — доступ к данным через ORM (GORM).
 type Repository struct {
-	DB *gorm.DB
+	DB    *gorm.DB
+	Redis *redis.Client
 }
 
-func NewRepository(db *gorm.DB) *Repository {
-	return &Repository{DB: db}
+func NewRepository(db *gorm.DB, redisClient *redis.Client) *Repository {
+	return &Repository{DB: db, Redis: redisClient}
 }
 
 // =====================
@@ -52,6 +55,33 @@ func (r *Repository) GetUserByUsername(username string) (*User, error) {
 		return nil, err
 	}
 	return &u, nil
+}
+
+// BlacklistJWT помещает токен в blacklist Redis до истечения срока действия.
+func (r *Repository) BlacklistJWT(ctx context.Context, token string, expiresAt time.Time) error {
+	if r.Redis == nil {
+		return fmt.Errorf("redis is not configured")
+	}
+	ttl := time.Until(expiresAt)
+	if ttl <= 0 {
+		ttl = time.Minute
+	}
+	return r.Redis.Set(ctx, "jwt:blacklist:"+token, "1", ttl).Err()
+}
+
+func (r *Repository) IsTokenBlacklisted(ctx context.Context, token string) (bool, error) {
+	if r.Redis == nil {
+		return false, nil
+	}
+	key := "jwt:blacklist:" + token
+	val, err := r.Redis.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return val != "", nil
 }
 
 type Service struct {
@@ -236,6 +266,51 @@ func (r *Repository) FilterApplicationsForUser(
 		apps[i].ItemsCount = len(apps[i].Items)
 	}
 	return apps, nil
+}
+
+// FilterApplicationsForModerator — список заявок (кроме deleted и draft) без фильтра по пользователю.
+func (r *Repository) FilterApplicationsForModerator(
+	status string,
+	formedFrom, formedTo *time.Time,
+) ([]Application, error) {
+	var apps []Application
+
+	q := r.DB.Model(&Application{}).
+		Preload("Items.Service").
+		Where("status NOT IN ('deleted', 'draft')")
+
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	if formedFrom != nil {
+		q = q.Where("formed_at >= ?", *formedFrom)
+	}
+	if formedTo != nil {
+		q = q.Where("formed_at <= ?", *formedTo)
+	}
+
+	if err := q.Order("formed_at DESC, id DESC").Find(&apps).Error; err != nil {
+		return nil, err
+	}
+
+	for i := range apps {
+		r.applyWearAndTotalPrice(&apps[i])
+		apps[i].ItemsCount = len(apps[i].Items)
+	}
+	return apps, nil
+}
+
+func (r *Repository) GetApplicationByIDForModerator(appID uint) (*Application, error) {
+	var app Application
+	err := r.DB.
+		Preload("Items.Service").
+		Where("id = ? AND status <> 'deleted'", appID).
+		First(&app).Error
+	if err != nil {
+		return nil, err
+	}
+	r.applyWearAndTotalPrice(&app)
+	return &app, nil
 }
 
 func (r *Repository) GetApplicationByID(appID uint, userID uint) (*Application, error) {
