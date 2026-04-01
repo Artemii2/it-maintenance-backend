@@ -48,6 +48,27 @@ func runMigrations(db *sql.DB) error {
 	return goose.Up(db, "migrations")
 }
 
+// verifyCoreSchema проверяет, что после goose в БД действительно есть таблицы приложения.
+// Если версия в goose_db_version «обогнала» реальную схему (например, заменили файлы миграций),
+// сервер раньше поднимался, а главная страница оставалась пустой из‑за ERROR relation ... does not exist.
+func verifyCoreSchema(db *sql.DB) error {
+	var ok bool
+	// to_regclass учитывает кавычки в имени "brake-pad"
+	if err := db.QueryRow(`SELECT to_regclass('public."brake-pad"') IS NOT NULL`).Scan(&ok); err != nil {
+		return fmt.Errorf("schema check: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf(`таблица "brake-pad" отсутствует, хотя миграции goose помечены выполненными — схема БД не совпадает с проектом. Сбросьте данные Postgres и примените миграции заново, например: docker compose down -v && docker compose up -d postgres, затем перезапустите приложение`)
+	}
+	if err := db.QueryRow(`SELECT to_regclass('public."brake-pad-wear"') IS NOT NULL`).Scan(&ok); err != nil {
+		return fmt.Errorf("schema check: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf(`таблица "brake-pad-wear" отсутствует — выполните полный прогон миграций на чистой БД (см. сообщение выше про docker compose down -v)`)
+	}
+	return nil
+}
+
 func connectRedis() (*redis.Client, error) {
 	addr := getenv("REDIS_ADDR", "127.0.0.1:6379")
 	password := getenv("REDIS_PASSWORD", "")

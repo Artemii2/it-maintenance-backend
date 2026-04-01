@@ -52,14 +52,6 @@
 
             <p class="detail-card__description">{{ .strategy.Description }}</p>
 
-            {{ if .hasCalcInfo }}
-            <hr class="detail-card__separator">
-            <h2 class="detail-card__section-title">Используется в brake pad wear</h2>
-            <div class="calc-info-block">
-                <div class="calc-info-block__row"><strong>Комментарий:</strong> {{ .calcStrat.Comment }}</div>
-            </div>
-            {{ end }}
-
             <div class="detail-card__aside">
                 <form method="POST" action="/cart/add" style="width: 100%;">
                     <input type="hidden" name="service_id" value="{{ .strategy.ID }}">

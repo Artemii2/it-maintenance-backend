@@ -27,7 +27,6 @@ type applicationLineFlat struct {
 	Quantity            int     `json:"quantity"`
 	RemainingKm         float64 `json:"remaining_km"`
 	RemainingPercent    int     `json:"remaining_percent"`
-	Comment             string  `json:"comment"`
 }
 
 type applicationFlat struct {
@@ -74,7 +73,6 @@ func buildApplicationFlat(app *repository.Application) applicationFlat {
 			Quantity:            it.Quantity,
 			RemainingKm:         it.RemainingKM,
 			RemainingPercent:    it.RemainingPercent,
-			Comment:             it.Comment,
 		})
 	}
 	return applicationFlat{
@@ -97,7 +95,7 @@ func buildApplicationFlat(app *repository.Application) applicationFlat {
 // Список заявок (кроме удалённых и черновиков) с фильтрацией по статусу
 // и диапазону даты формирования.
 // @Summary List applications
-// @Tags applications
+// @Tags brake-pad-wear
 // @Security ApiKeyAuth
 // @Produce json
 // @Param status query string false "status"
@@ -165,7 +163,7 @@ func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 
 // ApiGetApplication — GET /api/brake-pad-wear/:id
 // @Summary Get application by id
-// @Tags applications
+// @Tags brake-pad-wear
 // @Security ApiKeyAuth
 // @Produce json
 // @Param id path int true "application id"
@@ -211,7 +209,7 @@ type updateApplicationRequest struct {
 
 // ApiUpdateApplication — PUT /api/brake-pad-wear/:id
 // @Summary Update application fields (creator)
-// @Tags applications
+// @Tags brake-pad-wear
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
@@ -290,7 +288,7 @@ func (h *Handler) ApiApproveApplication(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, app)
+	ctx.JSON(http.StatusOK, buildApplicationFlat(app))
 }
 
 // ApiRejectApplication — POST /api/brake-pad-wear/:id/reject
@@ -313,7 +311,7 @@ func (h *Handler) ApiRejectApplication(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, app)
+	ctx.JSON(http.StatusOK, buildApplicationFlat(app))
 }
 
 // ApiFinishApplication — PUT /api/brake-pad-wear/:id/finish
@@ -337,12 +335,12 @@ func (h *Handler) ApiFinishApplication(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, app)
+	ctx.JSON(http.StatusOK, buildApplicationFlat(app))
 }
 
 // ApiDeleteApplication — DELETE /api/brake-pad-wear/:id
 // @Summary Soft delete application (creator)
-// @Tags applications
+// @Tags brake-pad-wear
 // @Security ApiKeyAuth
 // @Param id path int true "application id"
 // @Success 204

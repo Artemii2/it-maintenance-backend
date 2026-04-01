@@ -47,9 +47,6 @@
                     <p class="card__response-time">Базовый ресурс: {{ .BaseResource }} км</p>
                     <p class="card__response-time">Стиль вождения: {{ if .DrivingStyleHint }}{{ .DrivingStyleHint }}{{ else }}—{{ end }}</p>
                 </div>
-                <div class="card__use-case">
-                    {{ .Price }} ₽
-                </div>
             </div>
         </a>
         {{ end }}

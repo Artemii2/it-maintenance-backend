@@ -14,6 +14,16 @@ import (
 	_ "web_backend/docs"
 )
 
+// RegisterHandler godoc
+// @title Brake Pad Wear API
+// @version 1.0
+// @description Лабораторная 4: авторизация (JWT+blacklist Redis) и Swagger для SPA.
+// @host localhost:8080
+// @BasePath /api
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
+
 // StartServer инициализирует репозиторий, обработчики и запускает HTTP-сервер.
 func StartServer() {
 	log.Println("Starting server")
@@ -25,6 +35,9 @@ func StartServer() {
 
 	if err := runMigrations(sqlDB); err != nil {
 		logrus.WithError(err).Fatal("DB migration error")
+	}
+	if err := verifyCoreSchema(sqlDB); err != nil {
+		logrus.WithError(err).Fatal("DB schema mismatch — главная и API не смогут работать, пока не восстановите таблицы")
 	}
 
 	redisClient, err := connectRedis()

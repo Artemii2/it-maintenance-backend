@@ -14,7 +14,7 @@ import (
 // ApiGetCartIcon — GET /api/brake-pad-wear/cart-icon
 // Возвращает id черновой заявки и количество услуг в ней.
 // @Summary Get cart icon info
-// @Tags cart
+// @Tags brake-pad-wear
 // @Security ApiKeyAuth
 // @Produce json
 // @Success 200 {object} map[string]any
@@ -55,7 +55,7 @@ type addToCartRequest struct {
 // Добавляет услугу в заявку-черновик текущего пользователя.
 // Если черновика нет — он создаётся автоматически.
 // @Summary Add item to draft application
-// @Tags cart
+// @Tags brake-pad-wear
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json

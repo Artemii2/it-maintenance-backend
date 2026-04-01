@@ -19,7 +19,7 @@ import (
 //   - padType — точное совпадение типа колодок
 //   - status  — статус (по умолчанию все кроме deleted)
 // @Summary List services (guest доступ)
-// @Tags services
+// @Tags brake-pad
 // @Produce json
 // @Param title query string false "title substring"
 // @Param padType query string false "pad type"
@@ -44,7 +44,7 @@ func (h *Handler) ApiGetServices(ctx *gin.Context) {
 
 // ApiGetService — GET /api/brake-pad/:id
 // @Summary Get service
-// @Tags services
+// @Tags brake-pad
 // @Produce json
 // @Param id path int true "service id"
 // @Success 200 {object} repository.Service
@@ -82,7 +82,7 @@ type createServiceRequest struct {
 // Ожидает JSON с данными услуги. Поля image_url и video_url содержат ИМЕНА файлов,
 // которые заранее загружены в MinIO.
 // @Summary Create service (auth)
-// @Tags services
+// @Tags brake-pad
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json

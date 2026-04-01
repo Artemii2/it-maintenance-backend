@@ -9,7 +9,7 @@ import (
 )
 
 // =====================
-// REST API (лаб.3) — домен m-m заявки-услуги (application_services)
+// REST API (лаб.3) — домен m-m заявки-услуги (таблица brake_wear)
 // =====================
 
 // ApiDeleteApplicationItem — DELETE /api/brake-pad-wear/:id/items/:serviceId

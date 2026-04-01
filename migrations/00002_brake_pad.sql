@@ -1,5 +1,5 @@
 -- +goose Up
-CREATE TABLE IF NOT EXISTS services (
+CREATE TABLE IF NOT EXISTS "brake-pad" (
   id            BIGSERIAL PRIMARY KEY,
   title         VARCHAR(120) NOT NULL,
   description   TEXT NOT NULL,
@@ -8,12 +8,11 @@ CREATE TABLE IF NOT EXISTS services (
   video_url     TEXT NULL,
   pad_type      VARCHAR(40) NOT NULL,
   base_resource INTEGER NOT NULL,
-  price         INTEGER NOT NULL,
-  CONSTRAINT services_status_chk CHECK (status IN ('active','deleted'))
+  driving_style_hint VARCHAR(120) NULL,
+  CONSTRAINT brake_pad_status_chk CHECK (status IN ('active','deleted'))
 );
 
-CREATE INDEX IF NOT EXISTS services_title_idx ON services USING btree (title);
+CREATE INDEX IF NOT EXISTS brake_pad_title_idx ON "brake-pad" USING btree (title);
 
 -- +goose Down
-DROP TABLE IF EXISTS services;
-
+DROP TABLE IF EXISTS "brake-pad";

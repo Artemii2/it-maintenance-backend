@@ -1,3 +1,4 @@
+basePath: /api
 definitions:
   handler.addToCartRequest:
     properties:
@@ -41,8 +42,6 @@ definitions:
     properties:
       base_resource_km:
         type: integer
-      comment:
-        type: string
       driving_style_coefficient:
         type: number
       effective_resource_km:
@@ -178,16 +177,11 @@ definitions:
       status:
         description: draft/deleted/formed/completed/rejected
         type: string
-      totalPrice:
-        description: расчётное поле (например, при завершении заявки)
-        type: integer
     type: object
   repository.ApplicationService:
     properties:
       applicationID:
         type: integer
-      comment:
-        type: string
       effectiveResourceKm:
         description: base_resource * k
         type: number
@@ -198,9 +192,14 @@ definitions:
       quantity:
         type: integer
       remainingKM:
-        description: расчётные поля для прогноза износа (не хранятся в БД)
+        description: для API/шаблонов
+        type: number
+      remainingKmDB:
+        description: снимок итога по строке при завершении заявки (NULL — до завершения)
         type: number
       remainingPercent:
+        type: integer
+      remainingPercentDB:
         type: integer
       service:
         $ref: '#/definitions/repository.Service'
@@ -221,8 +220,6 @@ definitions:
         type: string
       padType:
         type: string
-      price:
-        type: integer
       status:
         description: active/deleted
         type: string
@@ -244,8 +241,12 @@ definitions:
       username:
         type: string
     type: object
+host: localhost:8080
 info:
   contact: {}
+  description: 'Лабораторная 4: авторизация (JWT+blacklist Redis) и Swagger для SPA.'
+  title: Brake Pad Wear API
+  version: "1.0"
 paths:
   /auth/login:
     post:
@@ -335,7 +336,7 @@ paths:
             type: object
       summary: List services (guest доступ)
       tags:
-      - services
+      - brake-pad
     post:
       consumes:
       - application/json
@@ -372,7 +373,7 @@ paths:
       - ApiKeyAuth: []
       summary: Create service (auth)
       tags:
-      - services
+      - brake-pad
   /brake-pad-wear:
     get:
       parameters:
@@ -411,7 +412,7 @@ paths:
       - ApiKeyAuth: []
       summary: List applications
       tags:
-      - applications
+      - brake-pad-wear
   /brake-pad-wear/{id}:
     delete:
       parameters:
@@ -442,7 +443,7 @@ paths:
       - ApiKeyAuth: []
       summary: Soft delete application (creator)
       tags:
-      - applications
+      - brake-pad-wear
     get:
       parameters:
       - description: application id
@@ -476,7 +477,7 @@ paths:
       - ApiKeyAuth: []
       summary: Get application by id
       tags:
-      - applications
+      - brake-pad-wear
     put:
       consumes:
       - application/json
@@ -518,7 +519,7 @@ paths:
       - ApiKeyAuth: []
       summary: Update application fields (creator)
       tags:
-      - applications
+      - brake-pad-wear
   /brake-pad-wear/cart-icon:
     get:
       produces:
@@ -543,7 +544,7 @@ paths:
       - ApiKeyAuth: []
       summary: Get cart icon info
       tags:
-      - cart
+      - brake-pad-wear
   /brake-pad-wear/cart/items:
     post:
       consumes:
@@ -581,7 +582,7 @@ paths:
       - ApiKeyAuth: []
       summary: Add item to draft application
       tags:
-      - cart
+      - brake-pad-wear
   /brake-pad/{id}:
     get:
       parameters:
@@ -609,7 +610,7 @@ paths:
             type: object
       summary: Get service
       tags:
-      - services
+      - brake-pad
   /users/register:
     post:
       consumes:
@@ -637,4 +638,9 @@ paths:
       summary: Register user
       tags:
       - auth
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

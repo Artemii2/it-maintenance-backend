@@ -5,7 +5,7 @@ VALUES
   (2, 'moderator', 'demo', TRUE)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO services (title, description, status, image_url, video_url, pad_type, base_resource, price)
+INSERT INTO "brake-pad" (title, description, status, image_url, video_url, pad_type, base_resource, driving_style_hint)
 VALUES
   (
     'Керамические тормозные колодки',
@@ -15,7 +15,7 @@ VALUES
     'ceramic.MP4',
     'Керамические',
     60000,
-    8500
+    'спокойная'
   ),
   (
     'Органические тормозные колодки',
@@ -25,7 +25,7 @@ VALUES
     'organic.MP4',
     'Органические',
     35000,
-    4500
+    'спокойная'
   ),
   (
     'Полуметаллические тормозные колодки',
@@ -35,13 +35,12 @@ VALUES
     'semi_metallic.MP4',
     'Полуметаллические',
     45000,
-    6500
+    'активная'
   )
 ON CONFLICT DO NOTHING;
 
 -- +goose Down
-DELETE FROM application_services;
-DELETE FROM applications;
-DELETE FROM services;
+DELETE FROM brake_wear;
+DELETE FROM "brake-pad-wear";
+DELETE FROM "brake-pad";
 DELETE FROM users;
-

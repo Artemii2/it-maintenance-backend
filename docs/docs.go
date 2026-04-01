@@ -108,7 +108,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "services"
+                    "brake-pad"
                 ],
                 "summary": "List services (guest доступ)",
                 "parameters": [
@@ -163,7 +163,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "services"
+                    "brake-pad"
                 ],
                 "summary": "Create service (auth)",
                 "parameters": [
@@ -219,7 +219,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "brake-pad-wear"
                 ],
                 "summary": "List applications",
                 "parameters": [
@@ -280,7 +280,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "cart"
+                    "brake-pad-wear"
                 ],
                 "summary": "Get cart icon info",
                 "responses": {
@@ -322,7 +322,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "cart"
+                    "brake-pad-wear"
                 ],
                 "summary": "Add item to draft application",
                 "parameters": [
@@ -378,7 +378,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "brake-pad-wear"
                 ],
                 "summary": "Get application by id",
                 "parameters": [
@@ -433,7 +433,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "brake-pad-wear"
                 ],
                 "summary": "Update application fields (creator)",
                 "parameters": [
@@ -491,7 +491,7 @@ const docTemplate = `{
                     }
                 ],
                 "tags": [
-                    "applications"
+                    "brake-pad-wear"
                 ],
                 "summary": "Soft delete application (creator)",
                 "parameters": [
@@ -537,7 +537,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "services"
+                    "brake-pad"
                 ],
                 "summary": "Get service",
                 "parameters": [
@@ -679,9 +679,6 @@ const docTemplate = `{
             "properties": {
                 "base_resource_km": {
                     "type": "integer"
-                },
-                "comment": {
-                    "type": "string"
                 },
                 "driving_style_coefficient": {
                     "type": "number"
@@ -883,10 +880,6 @@ const docTemplate = `{
                 "status": {
                     "description": "draft/deleted/formed/completed/rejected",
                     "type": "string"
-                },
-                "totalPrice": {
-                    "description": "расчётное поле (например, при завершении заявки)",
-                    "type": "integer"
                 }
             }
         },
@@ -895,9 +888,6 @@ const docTemplate = `{
             "properties": {
                 "applicationID": {
                     "type": "integer"
-                },
-                "comment": {
-                    "type": "string"
                 },
                 "effectiveResourceKm": {
                     "description": "base_resource * k",
@@ -913,10 +903,17 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "remainingKM": {
-                    "description": "расчётные поля для прогноза износа (не хранятся в БД)",
+                    "description": "для API/шаблонов",
+                    "type": "number"
+                },
+                "remainingKmDB": {
+                    "description": "снимок итога по строке при завершении заявки (NULL — до завершения)",
                     "type": "number"
                 },
                 "remainingPercent": {
+                    "type": "integer"
+                },
+                "remainingPercentDB": {
                     "type": "integer"
                 },
                 "service": {
@@ -947,9 +944,6 @@ const docTemplate = `{
                 },
                 "padType": {
                     "type": "string"
-                },
-                "price": {
-                    "type": "integer"
                 },
                 "status": {
                     "description": "active/deleted",
@@ -983,17 +977,24 @@ const docTemplate = `{
                 }
             }
         }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
-	BasePath:         "",
+	Version:          "1.0",
+	Host:             "localhost:8080",
+	BasePath:         "/api",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Brake Pad Wear API",
+	Description:      "Лабораторная 4: авторизация (JWT+blacklist Redis) и Swagger для SPA.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

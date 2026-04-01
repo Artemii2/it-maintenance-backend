@@ -95,9 +95,10 @@ type Service struct {
 
 	PadType          string `gorm:"size:40;not null"`
 	BaseResource     int    `gorm:"not null"`
-	Price            int    `gorm:"not null"`
 	DrivingStyleHint string `gorm:"column:driving_style_hint;size:120"`
 }
+
+func (Service) TableName() string { return "brake-pad" }
 
 type Application struct {
 	ID          uint      `gorm:"primaryKey"`
@@ -113,9 +114,6 @@ type Application struct {
 	DrivingStyle string `gorm:"column:driving_style"`
 	Mileage      int    `gorm:"column:mileage"`
 
-	// расчётное поле (например, при завершении заявки)
-	TotalPrice int `gorm:"column:total_price"`
-
 	Items []ApplicationService `gorm:"foreignKey:ApplicationID"`
 
 	// вычисляемые поля только для отдачи в API (не хранятся в БД)
@@ -125,6 +123,8 @@ type Application struct {
 	MinRemainingPercent   int     `gorm:"-"`
 }
 
+func (Application) TableName() string { return "brake-pad-wear" }
+
 type ApplicationService struct {
 	ApplicationID uint `gorm:"primaryKey;column:application_id"`
 	ServiceID     uint `gorm:"primaryKey;column:service_id"`
@@ -132,15 +132,19 @@ type ApplicationService struct {
 	Quantity  int    `gorm:"not null;default:1"`
 	Position  int    `gorm:"not null;default:1"`
 	IsPrimary bool   `gorm:"not null;default:false"`
-	Comment   string
+
+	// снимок итога по строке при завершении заявки (NULL — до завершения)
+	RemainingKmDB      *float64 `gorm:"column:remaining_km"`
+	RemainingPercentDB *int     `gorm:"column:remaining_percent"`
 
 	Service Service `gorm:"foreignKey:ServiceID"`
 
-	// расчётные поля для прогноза износа (не хранятся в БД)
-	RemainingKM           float64 `gorm:"-"`
-	RemainingPercent      int     `gorm:"-"`
+	RemainingKM         float64 `gorm:"-"` // для API/шаблонов
+	RemainingPercent    int     `gorm:"-"`
 	EffectiveResourceKm float64 `gorm:"-"` // base_resource * k
 }
+
+func (ApplicationService) TableName() string { return "brake_wear" }
 
 // =====================
 // ORM-ОПЕРАЦИИ (4 контроллера через ORM используют эти методы)
@@ -262,7 +266,7 @@ func (r *Repository) FilterApplicationsForUser(
 	}
 
 	for i := range apps {
-		r.applyWearAndTotalPrice(&apps[i])
+		r.applyWearResults(&apps[i])
 		apps[i].ItemsCount = len(apps[i].Items)
 	}
 	return apps, nil
@@ -294,7 +298,7 @@ func (r *Repository) FilterApplicationsForModerator(
 	}
 
 	for i := range apps {
-		r.applyWearAndTotalPrice(&apps[i])
+		r.applyWearResults(&apps[i])
 		apps[i].ItemsCount = len(apps[i].Items)
 	}
 	return apps, nil
@@ -309,7 +313,7 @@ func (r *Repository) GetApplicationByIDForModerator(appID uint) (*Application, e
 	if err != nil {
 		return nil, err
 	}
-	r.applyWearAndTotalPrice(&app)
+	r.applyWearResults(&app)
 	return &app, nil
 }
 
@@ -323,46 +327,59 @@ func (r *Repository) GetApplicationByID(appID uint, userID uint) (*Application, 
 		return nil, err
 	}
 
-	r.applyWearAndTotalPrice(&app)
+	r.applyWearResults(&app)
 	return &app, nil
 }
 
-// applyWearAndTotalPrice — прогноз износа по теме «brake pad wear» и сумма по услугам.
-// Формула на строку: effective = base_resource * k(стиль); остаток км = max(0, effective − пробег);
-// остаток % = round(остаток / effective * 100).
-func (r *Repository) applyWearAndTotalPrice(app *Application) {
+func computeLineWearIntoItem(it *ApplicationService, coef, mileage float64) {
+	base := float64(it.Service.BaseResource)
+	var initial float64
+	if base > 0 {
+		initial = base * coef
+	}
+	it.EffectiveResourceKm = initial
+	var rem float64
+	var pct int
+	if base > 0 {
+		remaining := initial - mileage
+		if remaining < 0 {
+			remaining = 0
+		}
+		rem = remaining
+		if initial > 0 {
+			p := (remaining / initial) * 100
+			if p < 0 {
+				p = 0
+			}
+			pct = int(math.Round(p))
+		}
+	}
+	it.RemainingKM = rem
+	it.RemainingPercent = pct
+}
+
+// applyWearResults — остаточный ресурс по строкам: для completed берётся снимок из brake_wear,
+// иначе считается по пробегу и стилю вождения.
+func (r *Repository) applyWearResults(app *Application) {
 	coef := drivingStyleCoef(app.DrivingStyle)
 	app.DrivingStyleCoeff = coef
 	mileage := float64(app.Mileage)
 
-	total := 0
-	for i := range app.Items {
-		base := float64(app.Items[i].Service.BaseResource)
-		if base > 0 {
-			initial := base * coef
-			app.Items[i].EffectiveResourceKm = initial
-			remaining := initial - mileage
-			if remaining < 0 {
-				remaining = 0
-			}
-			app.Items[i].RemainingKM = remaining
-
-			if initial > 0 {
-				percent := (remaining / initial) * 100
-				if percent < 0 {
-					percent = 0
-				}
-				app.Items[i].RemainingPercent = int(math.Round(percent))
-			}
-		}
-
-		total += app.Items[i].Service.Price * app.Items[i].Quantity
-	}
-	app.TotalPrice = total
-
 	minKm := math.MaxFloat64
 	minPct := 101
-	for _, it := range app.Items {
+
+	for i := range app.Items {
+		it := &app.Items[i]
+		if app.Status == "completed" && it.RemainingKmDB != nil && it.RemainingPercentDB != nil {
+			base := float64(it.Service.BaseResource)
+			if base > 0 {
+				it.EffectiveResourceKm = base * coef
+			}
+			it.RemainingKM = *it.RemainingKmDB
+			it.RemainingPercent = *it.RemainingPercentDB
+		} else {
+			computeLineWearIntoItem(it, coef, mileage)
+		}
 		if it.RemainingKM < minKm {
 			minKm = it.RemainingKM
 		}
@@ -378,10 +395,29 @@ func (r *Repository) applyWearAndTotalPrice(app *Application) {
 	}
 	app.MinRemainingKm = minKm
 	app.MinRemainingPercent = minPct
+}
 
-	if app.Status == "completed" {
-		_ = r.DB.Model(&Application{}).Where("id = ?", app.ID).Update("total_price", total).Error
+// persistBrakeWearResults — записать в brake_wear итог по каждой строке (при завершении заявки).
+func (r *Repository) persistBrakeWearResults(appID uint) error {
+	var app Application
+	if err := r.DB.Preload("Items.Service").First(&app, appID).Error; err != nil {
+		return err
 	}
+	coef := drivingStyleCoef(app.DrivingStyle)
+	mileage := float64(app.Mileage)
+	for i := range app.Items {
+		it := &app.Items[i]
+		computeLineWearIntoItem(it, coef, mileage)
+		if err := r.DB.Model(&ApplicationService{}).
+			Where("application_id = ? AND service_id = ?", appID, it.ServiceID).
+			Updates(map[string]any{
+				"remaining_km":      it.RemainingKM,
+				"remaining_percent": it.RemainingPercent,
+			}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *Repository) AddServiceToDraft(userID, serviceID uint, qty int) (*Application, error) {
@@ -419,7 +455,7 @@ func (r *Repository) AddServiceToDraft(userID, serviceID uint, qty int) (*Applic
 		if err := tx.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "application_id"}, {Name: "service_id"}},
 			DoUpdates: clause.Assignments(map[string]any{
-				"quantity": gorm.Expr("application_services.quantity + EXCLUDED.quantity"),
+				"quantity": gorm.Expr("brake_wear.quantity + EXCLUDED.quantity"),
 			}),
 		}).Create(&item).Error; err != nil {
 			return err
@@ -512,17 +548,9 @@ func (r *Repository) UpdateApplicationForCreator(
 		return nil, err
 	}
 
-	// перечитываем с позициями и пересчитываем total_price
 	if err := r.DB.Preload("Items.Service").First(&app, appID).Error; err != nil {
 		return nil, err
 	}
-
-	total := 0
-	for _, it := range app.Items {
-		total += it.Service.Price * it.Quantity
-	}
-	app.TotalPrice = total
-	_ = r.DB.Model(&Application{}).Where("id = ?", app.ID).Update("total_price", total).Error
 
 	return &app, nil
 }
@@ -546,11 +574,19 @@ func (r *Repository) SetApplicationStatus(
 	fields := map[string]any{
 		"status":       newStatus,
 		"moderator_id": moderatorID,
-		"completed_at": time.Now(),
+	}
+	if newStatus == "completed" {
+		fields["completed_at"] = time.Now()
 	}
 
 	if err := r.DB.Model(&Application{}).Where("id = ?", appID).Updates(fields).Error; err != nil {
 		return nil, err
+	}
+
+	if newStatus == "completed" {
+		if err := r.persistBrakeWearResults(appID); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := r.DB.Preload("Items.Service").First(&app, appID).Error; err != nil {

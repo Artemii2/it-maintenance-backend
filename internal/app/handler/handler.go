@@ -186,7 +186,7 @@ func (h *Handler) DeleteDraft(ctx *gin.Context) {
 	userID := h.currentUserID(ctx)
 
 	_, err := h.SQL.Exec(
-		"UPDATE applications SET status = 'deleted' WHERE created_by_id = $1 AND status = 'draft'",
+		`UPDATE "brake-pad-wear" SET status = 'deleted' WHERE created_by_id = $1 AND status = 'draft'`,
 		userID,
 	)
 	if err != nil {

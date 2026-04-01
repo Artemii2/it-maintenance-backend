@@ -95,7 +95,6 @@
                 <th>Кол-во</th>
                 <th>Остаток, км</th>
                 <th>Остаток, %</th>
-                <th>Комментарий</th>
             </tr>
             </thead>
             <tbody>
@@ -115,7 +114,6 @@
                 <td>{{ .Quantity }}</td>
                 <td>{{ printf "%.0f" .RemainingKM }}</td>
                 <td>{{ .RemainingPercent }}</td>
-                <td><span class="wear-table-flat__comment">{{ .Comment }}</span></td>
             </tr>
             {{ end }}
             </tbody>

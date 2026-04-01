@@ -1,8 +1,13 @@
 {
     "swagger": "2.0",
     "info": {
-        "contact": {}
+        "description": "Лабораторная 4: авторизация (JWT+blacklist Redis) и Swagger для SPA.",
+        "title": "Brake Pad Wear API",
+        "contact": {},
+        "version": "1.0"
     },
+    "host": "localhost:8080",
+    "basePath": "/api",
     "paths": {
         "/auth/login": {
             "post": {
@@ -97,7 +102,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "services"
+                    "brake-pad"
                 ],
                 "summary": "List services (guest доступ)",
                 "parameters": [
@@ -152,7 +157,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "services"
+                    "brake-pad"
                 ],
                 "summary": "Create service (auth)",
                 "parameters": [
@@ -208,7 +213,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "brake-pad-wear"
                 ],
                 "summary": "List applications",
                 "parameters": [
@@ -269,7 +274,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "cart"
+                    "brake-pad-wear"
                 ],
                 "summary": "Get cart icon info",
                 "responses": {
@@ -311,7 +316,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "cart"
+                    "brake-pad-wear"
                 ],
                 "summary": "Add item to draft application",
                 "parameters": [
@@ -367,7 +372,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "brake-pad-wear"
                 ],
                 "summary": "Get application by id",
                 "parameters": [
@@ -422,7 +427,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "applications"
+                    "brake-pad-wear"
                 ],
                 "summary": "Update application fields (creator)",
                 "parameters": [
@@ -480,7 +485,7 @@
                     }
                 ],
                 "tags": [
-                    "applications"
+                    "brake-pad-wear"
                 ],
                 "summary": "Soft delete application (creator)",
                 "parameters": [
@@ -526,7 +531,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "services"
+                    "brake-pad"
                 ],
                 "summary": "Get service",
                 "parameters": [
@@ -668,9 +673,6 @@
             "properties": {
                 "base_resource_km": {
                     "type": "integer"
-                },
-                "comment": {
-                    "type": "string"
                 },
                 "driving_style_coefficient": {
                     "type": "number"
@@ -872,10 +874,6 @@
                 "status": {
                     "description": "draft/deleted/formed/completed/rejected",
                     "type": "string"
-                },
-                "totalPrice": {
-                    "description": "расчётное поле (например, при завершении заявки)",
-                    "type": "integer"
                 }
             }
         },
@@ -884,9 +882,6 @@
             "properties": {
                 "applicationID": {
                     "type": "integer"
-                },
-                "comment": {
-                    "type": "string"
                 },
                 "effectiveResourceKm": {
                     "description": "base_resource * k",
@@ -902,10 +897,17 @@
                     "type": "integer"
                 },
                 "remainingKM": {
-                    "description": "расчётные поля для прогноза износа (не хранятся в БД)",
+                    "description": "для API/шаблонов",
+                    "type": "number"
+                },
+                "remainingKmDB": {
+                    "description": "снимок итога по строке при завершении заявки (NULL — до завершения)",
                     "type": "number"
                 },
                 "remainingPercent": {
+                    "type": "integer"
+                },
+                "remainingPercentDB": {
                     "type": "integer"
                 },
                 "service": {
@@ -936,9 +938,6 @@
                 },
                 "padType": {
                     "type": "string"
-                },
-                "price": {
-                    "type": "integer"
                 },
                 "status": {
                     "description": "active/deleted",
@@ -971,6 +970,13 @@
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }
