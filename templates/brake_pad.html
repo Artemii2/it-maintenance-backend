@@ -1,0 +1,60 @@
+<html lang="ru">
+<head>
+    <title>{{ .strategy.Title }} — Подробная информация</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="header-container">
+            <a href="/" class="logo-block">
+                <img src="/static/img/logo.png" alt="BrakePad" class="logo-img">
+                <span class="logo-text"></span>
+            </a>
+        </div>
+    </header>
+
+<div class="detail-wrapper">
+
+    <div class="detail-card">
+        <video class="detail-card__image"
+               src="{{ .minioBase }}/test/{{ .strategy.Video }}"
+               poster="{{ .minioBase }}/test/{{ .strategy.Image }}"
+               autoplay
+               muted
+               loop
+               playsinline
+               controls>
+            Ваш браузер не поддерживает видео.
+        </video>
+
+        <div class="detail-card__body">
+            <h1 class="detail-card__title">{{ .strategy.Title }}</h1>
+
+            <div class="detail-card__meta-row">
+                <span class="detail-card__badge detail-card__badge--green">
+                    {{ .strategy.PadType }}
+                </span>
+                <span class="detail-card__badge detail-card__badge--blue">
+                    {{ .strategy.BaseResource }} км
+                </span>
+                <span class="detail-card__badge">
+                    {{ .strategy.DrivingStyleHint }}
+                </span>
+            </div>
+
+            <p class="detail-card__description">
+                {{ .strategy.Description }}
+            </p>
+        </div>
+
+        <div class="detail-card__aside">
+            <div class="detail-card__price-button">
+                В корзину
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
