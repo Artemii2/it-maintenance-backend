@@ -1,0 +1,75 @@
+<html lang="ru">
+<head>
+    <title>{{ .strategy.Title }} — Подробная информация</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="header-container">
+            <a href="/" class="logo-block">
+                <img src="/static/img/logo.png" alt="BrakePad" class="logo-img">
+                <span class="logo-text"></span>
+            </a>
+
+            <form action="/" method="GET" class="search-form">
+                <div class="search-input-wrapper">
+                    <input type="text"
+                           name="query"
+                           class="search-input"
+                           placeholder="Поиск по типу колодок..."
+                           value="{{ .query }}">
+                </div>
+                <button type="submit" class="search-btn search-btn--icon" aria-label="Поиск"></button>
+            </form>
+        </div>
+    </header>
+
+<div class="detail-wrapper">
+
+    <div class="detail-card detail-card--compact">
+        <div class="detail-card__media">
+            <video class="detail-card__media-video"
+                   src="{{ .minioBase }}/test/{{ .strategy.VideoURL }}"
+                   poster="{{ .minioBase }}/test/{{ .strategy.ImageURL }}"
+                   autoplay
+                   muted
+                   loop
+                   playsinline
+                   controls>
+                Ваш браузер не поддерживает видео.
+            </video>
+        </div>
+
+        <div class="detail-card__content">
+            <h1 class="detail-card__title">{{ .strategy.Title }}</h1>
+
+            <div class="detail-card__badges">
+                <span class="detail-badge detail-badge--primary">Тип: {{ .strategy.PadType }}</span>
+                <span class="detail-badge">Ресурс: {{ .strategy.BaseResource }} км</span>
+                <span class="detail-badge">Стиль: {{ if .strategy.DrivingStyleHint }}{{ .strategy.DrivingStyleHint }}{{ else }}—{{ end }}</span>
+            </div>
+
+            <p class="detail-card__description">{{ .strategy.Description }}</p>
+
+            {{ if .hasCalcInfo }}
+            <hr class="detail-card__separator">
+            <h2 class="detail-card__section-title">Используется в brake pad wear</h2>
+            <div class="calc-info-block">
+                <div class="calc-info-block__row"><strong>Комментарий:</strong> {{ .calcStrat.Comment }}</div>
+            </div>
+            {{ end }}
+
+            <div class="detail-card__aside">
+                <form method="POST" action="/cart/add" style="width: 100%;">
+                    <input type="hidden" name="service_id" value="{{ .strategy.ID }}">
+                    <button type="submit" class="detail-card__price-button">В корзину</button>
+                </form>
+                <div class="detail-card__stock">В наличии 100 шт</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,121 @@
+<html lang="ru">
+<head>
+    <title>Заявка № {{ .app.ID }} — Расчёт износа</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="header-container">
+            <a href="/" class="logo-block">
+                <img src="/static/img/logo.png" alt="BrakePad" class="logo-img">
+                <span class="logo-text"></span>
+            </a>
+    
+            <form action="/" method="GET" class="search-form">
+                <div class="search-input-wrapper">
+                    <input type="text"
+                           name="query"
+                           class="search-input"
+                           placeholder="Поиск по типу колодок..."
+                           value="{{ .query }}">
+                </div>
+                <button type="submit" class="search-btn search-btn--icon" aria-label="Поиск"></button>
+            </form>
+        </div>
+    </header>
+
+<div class="calculation-detail">
+
+
+    <div class="calculation-detail__header-card">
+        <h1 class="calculation-detail__title">
+            Заявка № {{ .app.ID }}
+        </h1>
+
+        <div class="calculation-detail__info">
+            <div><strong>Статус:</strong> {{ .app.Status }}</div>
+            <div><strong>Создана:</strong> {{ .app.CreatedAt }}</div>
+            {{ if .app.DrivingStyle }}<div><strong>Стиль вождения:</strong> {{ .app.DrivingStyle }}</div>{{ end }}
+            {{ if gt .app.Mileage 0 }}<div><strong>Пробег:</strong> {{ .app.Mileage }} км</div>{{ end }}
+        </div>
+
+        <form id="wear-recalc-form" method="POST" action="/brake-pad-wear/{{ .app.ID }}/recalc" style="margin-top: 12px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <input id="wear-mileage" type="number" name="mileage" min="0" step="1"
+                       value="{{ .app.Mileage }}"
+                       class="comment-input"
+                       style="max-width: 220px; height: 40px;"
+                       placeholder="Пробег, км"
+                       autocomplete="off"
+                       aria-label="Пробег, км">
+                <select id="wear-style" name="driving_style" class="comment-input" style="max-width: 240px; height: 40px;"
+                        aria-label="Стиль вождения">
+                    <option value="Спокойный" {{ if eq .app.DrivingStyle "Спокойный" }}selected{{ end }}>Спокойный</option>
+                    <option value="Спортивный" {{ if or (eq .app.DrivingStyle "Спортивный") (eq .app.DrivingStyle "") }}selected{{ end }}>Спортивный</option>
+                    <option value="Агрессивный" {{ if eq .app.DrivingStyle "Агрессивный" }}selected{{ end }}>Агрессивный</option>
+                </select>
+            </div>
+        </form>
+        <script>
+        (function () {
+            var form = document.getElementById('wear-recalc-form');
+            if (!form) return;
+            var mileage = document.getElementById('wear-mileage');
+            var style = document.getElementById('wear-style');
+            var t = null;
+            function submitSoon() {
+                if (t) clearTimeout(t);
+                t = setTimeout(function () { form.submit(); }, 450);
+            }
+            if (mileage) mileage.addEventListener('input', submitSoon);
+            if (style) style.addEventListener('change', function () { form.submit(); });
+        })();
+        </script>
+
+        {{ if eq .app.Status "draft" }}
+        <form method="POST" action="/cart/delete" style="margin-top: 12px;">
+            <button type="submit" class="search-btn" style="height: 40px; padding: 0 14px;">
+                Удалить заявку
+            </button>
+        </form>
+        {{ end }}
+    </div>
+
+    <table class="calc-table">
+        <thead>
+        <tr>
+            <th>Изображение</th>
+            <th>Услуга</th>
+            <th>Кол-во</th>
+            <th>Остаток ресурса</th>
+            <th>Комментарий</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{ range .app.Items }}
+        <tr>
+            <td>
+                <img src="{{ $.minioBase }}/test/{{ .Service.ImageURL }}"
+                     alt="{{ .Service.Title }}"
+                     onerror="this.src='/static/img/placeholder.svg'; this.onerror=null"
+                     class="calc-table__img">
+            </td>
+            <td>{{ .Service.Title }}</td>
+            <td>{{ .Quantity }}</td>
+            <td>
+                {{ printf "%.0f" .RemainingKM }} км<br>
+                {{ .RemainingPercent }}%
+            </td>
+            <td>
+                <textarea readonly class="comment-input" rows="2">{{ .Comment }}</textarea>
+            </td>
+        </tr>
+        {{ end }}
+        </tbody>
+    </table>
+
+</div>
+
+</body>
+</html>
