@@ -62,6 +62,13 @@ type applicationSummaryJSON struct {
 	MinRemainingPercent int       `json:"min_remaining_percent"`
 }
 
+type applicationsListResponse struct {
+	Total    int                      `json:"total"`
+	TotalAll int                      `json:"total_all"`
+	ByStatus map[string]int           `json:"by_status"`
+	Results  []applicationSummaryJSON `json:"results"`
+}
+
 func buildApplicationFlat(app *repository.Application) applicationFlat {
 	lines := make([]applicationLineFlat, 0, len(app.Items))
 	for _, it := range app.Items {
@@ -123,6 +130,12 @@ func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot load applications"})
 		return
 	}
+	byStatus, totalAll, err := h.Repository.CountVisibleApplicationsByStatusForUser(userID)
+	if err != nil {
+		logrus.WithError(err).Error("api: applications count error")
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot count applications"})
+		return
+	}
 	out := make([]applicationSummaryJSON, 0, len(apps))
 	for i := range apps {
 		a := apps[i]
@@ -140,8 +153,12 @@ func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 			MinRemainingPercent: a.MinRemainingPercent,
 		})
 	}
-	// Отдаём массив объектов, как в примере с system_loads.
-	ctx.JSON(http.StatusOK, out)
+	ctx.JSON(http.StatusOK, applicationsListResponse{
+		Total:    len(out),
+		TotalAll: totalAll,
+		ByStatus: byStatus,
+		Results:  out,
+	})
 }
 
 // ApiGetApplication — GET /api/brake-pad-wear/:id

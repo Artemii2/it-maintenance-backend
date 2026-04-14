@@ -238,6 +238,36 @@ func (r *Repository) FilterApplicationsForUser(
 	return apps, nil
 }
 
+// CountVisibleApplicationsByStatusForUser — количество заявок пользователя по статусам
+// (исключая deleted и draft), без учёта фильтров списка.
+func (r *Repository) CountVisibleApplicationsByStatusForUser(userID uint) (map[string]int, int, error) {
+	type row struct {
+		Status string
+		Count  int
+	}
+
+	var rows []row
+	if err := r.DB.Model(&Application{}).
+		Select("status, COUNT(*) AS count").
+		Where("created_by_id = ? AND status NOT IN ('deleted', 'draft')", userID).
+		Group("status").
+		Scan(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+
+	out := map[string]int{
+		"formed":    0,
+		"completed": 0,
+		"rejected":  0,
+	}
+	total := 0
+	for _, r := range rows {
+		out[r.Status] = r.Count
+		total += r.Count
+	}
+	return out, total, nil
+}
+
 func (r *Repository) GetApplicationByID(appID uint, userID uint) (*Application, error) {
 	var app Application
 	err := r.DB.
