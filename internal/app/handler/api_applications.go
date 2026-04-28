@@ -49,24 +49,27 @@ type applicationFlat struct {
 // applicationSummaryJSON — укороченный формат списка заявок, без вложенных Items/Service,
 // аналогичный примеру system_loads из методички.
 type applicationSummaryJSON struct {
-	ID                  uint      `json:"id"`
-	Status              string    `json:"status"`
-	CreatedAt           time.Time `json:"created_at"`
-	FormedAt            *time.Time `json:"formed_at,omitempty"`
-	CompletedAt         *time.Time `json:"completed_at,omitempty"`
-	DrivingStyle        string    `json:"driving_style"`
-	Mileage             int       `json:"mileage"`
-	TotalPrice          int       `json:"total_price"`
-	ItemsCount          int       `json:"items_count"`
-	MinRemainingKm      float64   `json:"min_remaining_km"`
-	MinRemainingPercent int       `json:"min_remaining_percent"`
+	ID                uint       `json:"id"`
+	Status            string     `json:"status"`
+	CreatedAt         time.Time  `json:"created_at"`
+	FormedAt          *time.Time `json:"formed_at,omitempty"`
+	CompletedAt       *time.Time `json:"completed_at,omitempty"`
+	DrivingStyle      string     `json:"driving_style"`
+	Mileage           int        `json:"mileage"`
+	DrivingStyleCoeff float64    `json:"driving_style_coefficient"`
+	MinRemainingKm    float64    `json:"min_remaining_km"`
 }
 
 type applicationsListResponse struct {
-	Total    int                      `json:"total"`
-	TotalAll int                      `json:"total_all"`
-	ByStatus map[string]int           `json:"by_status"`
-	Results  []applicationSummaryJSON `json:"results"`
+	Total   int                      `json:"total"`
+	Results []applicationSummaryJSON `json:"results"`
+}
+
+func completedMinRemainingKm(app repository.Application) float64 {
+	if app.Status != "completed" {
+		return 0
+	}
+	return app.MinRemainingKm
 }
 
 func buildApplicationFlat(app *repository.Application) applicationFlat {
@@ -130,34 +133,24 @@ func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot load applications"})
 		return
 	}
-	byStatus, totalAll, err := h.Repository.CountVisibleApplicationsByStatusForUser(userID)
-	if err != nil {
-		logrus.WithError(err).Error("api: applications count error")
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "cannot count applications"})
-		return
-	}
 	out := make([]applicationSummaryJSON, 0, len(apps))
 	for i := range apps {
 		a := apps[i]
 		out = append(out, applicationSummaryJSON{
-			ID:                  a.ID,
-			Status:              a.Status,
-			CreatedAt:           a.CreatedAt,
-			FormedAt:            a.FormedAt,
-			CompletedAt:         a.CompletedAt,
-			DrivingStyle:        a.DrivingStyle,
-			Mileage:             a.Mileage,
-			TotalPrice:          a.TotalPrice,
-			ItemsCount:          a.ItemsCount,
-			MinRemainingKm:      a.MinRemainingKm,
-			MinRemainingPercent: a.MinRemainingPercent,
+			ID:                a.ID,
+			Status:            a.Status,
+			CreatedAt:         a.CreatedAt,
+			FormedAt:          a.FormedAt,
+			CompletedAt:       a.CompletedAt,
+			DrivingStyle:      a.DrivingStyle,
+			Mileage:           a.Mileage,
+			DrivingStyleCoeff: a.DrivingStyleCoeff,
+			MinRemainingKm:    completedMinRemainingKm(a),
 		})
 	}
 	ctx.JSON(http.StatusOK, applicationsListResponse{
-		Total:    len(out),
-		TotalAll: totalAll,
-		ByStatus: byStatus,
-		Results:  out,
+		Total:   len(out),
+		Results: out,
 	})
 }
 
@@ -306,4 +299,3 @@ func (h *Handler) ApiDeleteApplication(ctx *gin.Context) {
 	}
 	ctx.Status(http.StatusNoContent)
 }
-
