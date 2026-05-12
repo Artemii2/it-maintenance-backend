@@ -1,0 +1,69 @@
+<html lang="ru">
+<head>
+    <title>Все заявки — Прогноз износа</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+<header class="main-header">
+    <div class="header-container">
+        <a href="/" class="logo-block">
+            <img src="/static/img/logo.png" alt="BrakePad" class="logo-img">
+            <span class="logo-text"></span>
+        </a>
+        <nav class="header-nav">
+            <a href="/" class="header-nav__link">Каталог</a>
+            <a href="/applications" class="header-nav__link header-nav__link--current">Все заявки</a>
+        </nav>
+    </div>
+</header>
+
+<div class="calculation-detail">
+    <div class="calculation-detail__header-card">
+        <h1 class="calculation-detail__title">Все заявки</h1>
+        <p class="applications-list__meta">Найдено заявок: <strong>{{ .total }}</strong> (без черновика и удалённых)</p>
+    </div>
+
+    {{ if eq .total 0 }}
+    <p class="applications-list__empty">Нет сформированных заявок. Добавьте услуги в корзину и сформируйте заявку.</p>
+    {{ else }}
+    <table class="calc-table applications-list-table">
+        <thead>
+        <tr>
+            <th>№</th>
+            <th>Статус</th>
+            <th>Создана</th>
+            <th>Сформирована</th>
+            <th>Стиль</th>
+            <th>Пробег, км</th>
+            <th>k</th>
+            <th>Услуг</th>
+            <th>Мин. остаток, км</th>
+            <th>Мин. остаток, %</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        {{ range .apps }}
+        <tr>
+            <td>{{ .ID }}</td>
+            <td>{{ .Status }}</td>
+            <td>{{ .CreatedAt }}</td>
+            <td>{{ if .FormedAt }}{{ .FormedAt }}{{ else }}—{{ end }}</td>
+            <td>{{ if .DrivingStyle }}{{ .DrivingStyle }}{{ else }}—{{ end }}</td>
+            <td>{{ .Mileage }}</td>
+            <td>{{ printf "%.2f" .DrivingStyleCoeff }}</td>
+            <td>{{ len .Items }}</td>
+            <td>{{ printf "%.0f" .MinRemainingKm }}</td>
+            <td>{{ .MinRemainingPercent }}</td>
+            <td><a href="/brake-wear/{{ .ID }}">Открыть</a></td>
+        </tr>
+        {{ end }}
+        </tbody>
+    </table>
+    {{ end }}
+</div>
+
+</body>
+</html>
+
