@@ -208,7 +208,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/brake-pad-wear": {
+        "/brake-wear": {
             "get": {
                 "security": [
                     {
@@ -219,7 +219,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "brake-pad-wear"
+                    "brake-wear"
                 ],
                 "summary": "List applications",
                 "parameters": [
@@ -269,7 +269,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/brake-pad-wear/cart-icon": {
+        "/brake-wear/cart-icon": {
             "get": {
                 "security": [
                     {
@@ -280,7 +280,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "brake-pad-wear"
+                    "brake-wear"
                 ],
                 "summary": "Get cart icon info",
                 "responses": {
@@ -308,7 +308,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/brake-pad-wear/cart/items": {
+        "/brake-wear/cart/items": {
             "post": {
                 "security": [
                     {
@@ -322,7 +322,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "brake-pad-wear"
+                    "brake-wear"
                 ],
                 "summary": "Add item to draft application",
                 "parameters": [
@@ -367,7 +367,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/brake-pad-wear/{id}": {
+        "/brake-wear/{id}": {
             "get": {
                 "security": [
                     {
@@ -378,7 +378,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "brake-pad-wear"
+                    "brake-wear"
                 ],
                 "summary": "Get application by id",
                 "parameters": [
@@ -433,7 +433,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "brake-pad-wear"
+                    "brake-wear"
                 ],
                 "summary": "Update application fields (creator)",
                 "parameters": [
@@ -491,7 +491,7 @@ const docTemplate = `{
                     }
                 ],
                 "tags": [
-                    "brake-pad-wear"
+                    "brake-wear"
                 ],
                 "summary": "Soft delete application (creator)",
                 "parameters": [

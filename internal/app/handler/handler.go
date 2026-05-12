@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"fmt"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -127,7 +127,7 @@ func (h *Handler) GetApplication(ctx *gin.Context) {
 	}
 
 	ctx.HTML(http.StatusOK, "brake-pad-ware.html", gin.H{
-		"app":      app,
+		"app":       app,
 		"minioBase": h.minioBase(ctx),
 	})
 }
@@ -159,7 +159,7 @@ func (h *Handler) RecalcWear(ctx *gin.Context) {
 		logrus.WithError(err).Error("recalc wear error")
 	}
 
-	ctx.Redirect(http.StatusFound, fmt.Sprintf("/brake-pad-wear/%d", id))
+	ctx.Redirect(http.StatusFound, fmt.Sprintf("/brake-wear/%d", id))
 }
 
 // AddToDraft — добавление услуги в текущую заявку через ORM
@@ -186,7 +186,7 @@ func (h *Handler) DeleteDraft(ctx *gin.Context) {
 	userID := h.currentUserID(ctx)
 
 	_, err := h.SQL.Exec(
-		`UPDATE "brake-pad-wear" SET status = 'deleted' WHERE created_by_id = $1 AND status = 'draft'`,
+		`UPDATE "brake-wear" SET status = 'deleted' WHERE created_by_id = $1 AND status = 'draft'`,
 		userID,
 	)
 	if err != nil {

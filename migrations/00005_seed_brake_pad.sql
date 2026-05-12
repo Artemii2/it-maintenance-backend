@@ -40,7 +40,7 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- +goose Down
-DELETE FROM brake_wear;
 DELETE FROM "brake-pad-wear";
+DELETE FROM "brake-wear";
 DELETE FROM "brake-pad";
 DELETE FROM users;

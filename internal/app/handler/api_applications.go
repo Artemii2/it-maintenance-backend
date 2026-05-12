@@ -11,7 +11,7 @@ import (
 )
 
 // =====================
-// REST API (лаб.3) — домен заявок (brake pad wear)
+// REST API (лаб.3) — домен заявок (brake wear)
 // =====================
 
 // Плоские DTO без вложенного объекта service внутри строки (удобно для проверки и Postman).
@@ -47,16 +47,16 @@ type applicationFlat struct {
 // applicationSummaryJSON — укороченный формат списка заявок, без вложенных Items/Service,
 // аналогичный примеру system_loads из методички.
 type applicationSummaryJSON struct {
-	ID                  uint      `json:"id"`
-	Status              string    `json:"status"`
-	CreatedAt           time.Time `json:"created_at"`
+	ID                  uint       `json:"id"`
+	Status              string     `json:"status"`
+	CreatedAt           time.Time  `json:"created_at"`
 	FormedAt            *time.Time `json:"formed_at,omitempty"`
 	CompletedAt         *time.Time `json:"completed_at,omitempty"`
-	DrivingStyle        string    `json:"driving_style"`
-	Mileage             int       `json:"mileage"`
-	ItemsCount          int       `json:"items_count"`
-	MinRemainingKm      float64   `json:"min_remaining_km"`
-	MinRemainingPercent int       `json:"min_remaining_percent"`
+	DrivingStyle        string     `json:"driving_style"`
+	Mileage             int        `json:"mileage"`
+	ItemsCount          int        `json:"items_count"`
+	MinRemainingKm      float64    `json:"min_remaining_km"`
+	MinRemainingPercent int        `json:"min_remaining_percent"`
 }
 
 func buildApplicationFlat(app *repository.Application) applicationFlat {
@@ -91,11 +91,11 @@ func buildApplicationFlat(app *repository.Application) applicationFlat {
 	}
 }
 
-// ApiGetApplications — GET /api/brake-pad-wear
+// ApiGetApplications — GET /api/brake-wear
 // Список заявок (кроме удалённых и черновиков) с фильтрацией по статусу
 // и диапазону даты формирования.
 // @Summary List applications
-// @Tags brake-pad-wear
+// @Tags brake-wear
 // @Security ApiKeyAuth
 // @Produce json
 // @Param status query string false "status"
@@ -104,7 +104,7 @@ func buildApplicationFlat(app *repository.Application) applicationFlat {
 // @Success 200 {array} applicationSummaryJSON
 // @Failure 401 {object} map[string]any
 // @Failure 500 {object} map[string]any
-// @Router /brake-pad-wear [get]
+// @Router /brake-wear [get]
 func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 	userID, err := userIDFromCtx(ctx)
 	if err != nil {
@@ -161,9 +161,9 @@ func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, out)
 }
 
-// ApiGetApplication — GET /api/brake-pad-wear/:id
+// ApiGetApplication — GET /api/brake-wear/:id
 // @Summary Get application by id
-// @Tags brake-pad-wear
+// @Tags brake-wear
 // @Security ApiKeyAuth
 // @Produce json
 // @Param id path int true "application id"
@@ -171,7 +171,7 @@ func (h *Handler) ApiGetApplications(ctx *gin.Context) {
 // @Failure 400 {object} map[string]any
 // @Failure 401 {object} map[string]any
 // @Failure 404 {object} map[string]any
-// @Router /brake-pad-wear/{id} [get]
+// @Router /brake-wear/{id} [get]
 func (h *Handler) ApiGetApplication(ctx *gin.Context) {
 	userID, err := userIDFromCtx(ctx)
 	if err != nil {
@@ -207,9 +207,9 @@ type updateApplicationRequest struct {
 	Status       string `json:"status"`
 }
 
-// ApiUpdateApplication — PUT /api/brake-pad-wear/:id
+// ApiUpdateApplication — PUT /api/brake-wear/:id
 // @Summary Update application fields (creator)
-// @Tags brake-pad-wear
+// @Tags brake-wear
 // @Security ApiKeyAuth
 // @Accept json
 // @Produce json
@@ -219,7 +219,7 @@ type updateApplicationRequest struct {
 // @Failure 400 {object} map[string]any
 // @Failure 401 {object} map[string]any
 // @Failure 500 {object} map[string]any
-// @Router /brake-pad-wear/{id} [put]
+// @Router /brake-wear/{id} [put]
 func (h *Handler) ApiUpdateApplication(ctx *gin.Context) {
 	userID, err := userIDFromCtx(ctx)
 	if err != nil {
@@ -268,7 +268,7 @@ func (h *Handler) ApiUpdateApplication(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, buildApplicationFlat(app))
 }
 
-// ApiApproveApplication — POST /api/brake-pad-wear/:id/approve
+// ApiApproveApplication — POST /api/brake-wear/:id/approve
 func (h *Handler) ApiApproveApplication(ctx *gin.Context) {
 	moderatorID, err := userIDFromCtx(ctx)
 	if err != nil {
@@ -291,7 +291,7 @@ func (h *Handler) ApiApproveApplication(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, buildApplicationFlat(app))
 }
 
-// ApiRejectApplication — POST /api/brake-pad-wear/:id/reject
+// ApiRejectApplication — POST /api/brake-wear/:id/reject
 func (h *Handler) ApiRejectApplication(ctx *gin.Context) {
 	moderatorID, err := userIDFromCtx(ctx)
 	if err != nil {
@@ -314,7 +314,7 @@ func (h *Handler) ApiRejectApplication(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, buildApplicationFlat(app))
 }
 
-// ApiFinishApplication — PUT /api/brake-pad-wear/:id/finish
+// ApiFinishApplication — PUT /api/brake-wear/:id/finish
 // Аналог PUT /api/.../{id}/finish из примера: переводит сформированную заявку
 // в статус completed от имени модератора.
 func (h *Handler) ApiFinishApplication(ctx *gin.Context) {
@@ -338,16 +338,16 @@ func (h *Handler) ApiFinishApplication(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, buildApplicationFlat(app))
 }
 
-// ApiDeleteApplication — DELETE /api/brake-pad-wear/:id
+// ApiDeleteApplication — DELETE /api/brake-wear/:id
 // @Summary Soft delete application (creator)
-// @Tags brake-pad-wear
+// @Tags brake-wear
 // @Security ApiKeyAuth
 // @Param id path int true "application id"
 // @Success 204
 // @Failure 400 {object} map[string]any
 // @Failure 401 {object} map[string]any
 // @Failure 500 {object} map[string]any
-// @Router /brake-pad-wear/{id} [delete]
+// @Router /brake-wear/{id} [delete]
 func (h *Handler) ApiDeleteApplication(ctx *gin.Context) {
 	userID, err := userIDFromCtx(ctx)
 	if err != nil {
@@ -368,4 +368,3 @@ func (h *Handler) ApiDeleteApplication(ctx *gin.Context) {
 	}
 	ctx.Status(http.StatusNoContent)
 }
-

@@ -374,7 +374,7 @@ paths:
       summary: Create service (auth)
       tags:
       - brake-pad
-  /brake-pad-wear:
+  /brake-wear:
     get:
       parameters:
       - description: status
@@ -412,8 +412,8 @@ paths:
       - ApiKeyAuth: []
       summary: List applications
       tags:
-      - brake-pad-wear
-  /brake-pad-wear/{id}:
+      - brake-wear
+  /brake-wear/{id}:
     delete:
       parameters:
       - description: application id
@@ -443,7 +443,7 @@ paths:
       - ApiKeyAuth: []
       summary: Soft delete application (creator)
       tags:
-      - brake-pad-wear
+      - brake-wear
     get:
       parameters:
       - description: application id
@@ -477,7 +477,7 @@ paths:
       - ApiKeyAuth: []
       summary: Get application by id
       tags:
-      - brake-pad-wear
+      - brake-wear
     put:
       consumes:
       - application/json
@@ -519,8 +519,8 @@ paths:
       - ApiKeyAuth: []
       summary: Update application fields (creator)
       tags:
-      - brake-pad-wear
-  /brake-pad-wear/cart-icon:
+      - brake-wear
+  /brake-wear/cart-icon:
     get:
       produces:
       - application/json
@@ -544,8 +544,8 @@ paths:
       - ApiKeyAuth: []
       summary: Get cart icon info
       tags:
-      - brake-pad-wear
-  /brake-pad-wear/cart/items:
+      - brake-wear
+  /brake-wear/cart/items:
     post:
       consumes:
       - application/json
@@ -582,7 +582,7 @@ paths:
       - ApiKeyAuth: []
       summary: Add item to draft application
       tags:
-      - brake-pad-wear
+      - brake-wear
   /brake-pad/{id}:
     get:
       parameters:

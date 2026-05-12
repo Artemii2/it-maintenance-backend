@@ -8,7 +8,7 @@
     <header class="main-header">
         <div class="header-cart">
             {{ if .draft }}
-            <a href="/brake-pad-wear/{{ .draft.ID }}" class="cart-icon" aria-label="Корзина ({{ len .draft.Items }} шт)" title="Brake pad wear — заявка № {{ .draft.ID }}">🧺<span class="cart-icon__count">{{ len .draft.Items }}</span></a>
+            <a href="/brake-wear/{{ .draft.ID }}" class="cart-icon" aria-label="Корзина ({{ len .draft.Items }} шт)" title="Brake wear — заявка № {{ .draft.ID }}">🧺<span class="cart-icon__count">{{ len .draft.Items }}</span></a>
             {{ else }}
             <span class="cart-icon cart-icon--disabled" aria-label="Корзина пуста" title="Добавьте услугу — создастся черновик заявки">🧺</span>
             {{ end }}

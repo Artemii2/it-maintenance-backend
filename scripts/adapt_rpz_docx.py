@@ -133,7 +133,7 @@ REPLACEMENTS: list[tuple[str, str]] = [
     ("department_applications_department", "application_services"),
     ("department_applications", "applications"),
     ("departments_count", "items_count"),
-    ("dep_app_dep", "brake-pad-wear"),
+    ("dep_app_dep", "brake-wear"),
     ("main_department_id", "service_id"),
     # --- HTTP-пути: в Word URL разбиты на несколько <w:t>, поэтому без лишнего «/api» внутри куска ---
     ("/users/signup", "/users/register"),
@@ -231,7 +231,7 @@ REPLACEMENTS: list[tuple[str, str]] = [
     # --- Оставшиеся department* (после длинных замен) ---
     ("department_application_id", "application_id"),
     ("department_id", "service_id"),
-    ("department_application", "brake-pad-wear"),
+    ("department_application", "brake-wear"),
     ("departments", "services"),
     ("department", "service"),
     # users: колонки (после department*, чтобы не задеть чужие строки)
@@ -253,13 +253,13 @@ def apply_replacements(text: str) -> str:
     return text
 
 
-# Фрагменты Word XML. После замены department_application → brake-pad-wear в приложении Б хвост URL такой:
-#   /{id}/edit-  +  второй run «brake-pad-wear» — лишний, удаляем целиком (со spellStart/spellEnd).
+# Фрагменты Word XML. После замены department_application → brake-wear в приложении Б хвост URL такой:
+#   /{id}/edit-  +  второй run «brake-wear» — лишний, удаляем целиком (со spellStart/spellEnd).
 _EDIT_TAIL = (
     '<w:t>/{id}/edit-</w:t></w:r><w:proofErr w:type="spellStart"/>'
     '<w:r w:rsidRPr="00BD5E5E"><w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="Times New Roman" '
     'w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="28"/><w:szCs w:val="28"/>'
-    '<w:lang w:val="en-US"/></w:rPr><w:t>brake-pad-wear</w:t></w:r><w:proofErr w:type="spellEnd"/>'
+    '<w:lang w:val="en-US"/></w:rPr><w:t>brake-wear</w:t></w:r><w:proofErr w:type="spellEnd"/>'
 )
 _FORM_TAIL = _EDIT_TAIL.replace("/{id}/edit-", "/{id}/form-")
 _DELETE_TAIL = _EDIT_TAIL.replace("/{id}/edit-", "/{id}/delete-")
@@ -267,7 +267,7 @@ _FINISH_TAIL = (
     '<w:t>/{id}/finish-</w:t></w:r><w:proofErr w:type="spellStart"/>'
     '<w:r w:rsidRPr="00BD5E5E"><w:rPr><w:rFonts w:ascii="Times New Roman" w:eastAsia="Times New Roman" '
     'w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="28"/><w:szCs w:val="28"/>'
-    '<w:lang w:val="en-US"/></w:rPr><w:t>brake-pad-wear</w:t></w:r><w:proofErr w:type="spellEnd"/>'
+    '<w:lang w:val="en-US"/></w:rPr><w:t>brake-wear</w:t></w:r><w:proofErr w:type="spellEnd"/>'
 )
 
 _OLD_ADD_CART = (

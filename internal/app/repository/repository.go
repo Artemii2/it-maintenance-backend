@@ -89,7 +89,7 @@ type Service struct {
 	Title       string `gorm:"size:120;not null"`
 	Description string `gorm:"not null"`
 
-	Status   string  `gorm:"size:16;not null"` // active/deleted
+	Status   string `gorm:"size:16;not null"` // active/deleted
 	ImageURL string `gorm:"column:image_url"`
 	VideoURL string `gorm:"column:video_url"`
 
@@ -110,28 +110,28 @@ type Application struct {
 	FormedAt     *time.Time
 	CompletedAt  *time.Time
 	ModeratorID  *uint
-	Moderator    *User `gorm:"foreignKey:ModeratorID"`
+	Moderator    *User  `gorm:"foreignKey:ModeratorID"`
 	DrivingStyle string `gorm:"column:driving_style"`
 	Mileage      int    `gorm:"column:mileage"`
 
 	Items []ApplicationService `gorm:"foreignKey:ApplicationID"`
 
 	// вычисляемые поля только для отдачи в API (не хранятся в БД)
-	ItemsCount            int     `gorm:"-"`
-	DrivingStyleCoeff     float64 `gorm:"-"` // k для формулы износа по стилю вождения
-	MinRemainingKm        float64 `gorm:"-"` // минимальный остаток по строкам заявки (итог «по теме»)
-	MinRemainingPercent   int     `gorm:"-"`
+	ItemsCount          int     `gorm:"-"`
+	DrivingStyleCoeff   float64 `gorm:"-"` // k для формулы износа по стилю вождения
+	MinRemainingKm      float64 `gorm:"-"` // минимальный остаток по строкам заявки (итог «по теме»)
+	MinRemainingPercent int     `gorm:"-"`
 }
 
-func (Application) TableName() string { return "brake-pad-wear" }
+func (Application) TableName() string { return "brake-wear" }
 
 type ApplicationService struct {
 	ApplicationID uint `gorm:"primaryKey;column:application_id"`
 	ServiceID     uint `gorm:"primaryKey;column:service_id"`
 
-	Quantity  int    `gorm:"not null;default:1"`
-	Position  int    `gorm:"not null;default:1"`
-	IsPrimary bool   `gorm:"not null;default:false"`
+	Quantity  int  `gorm:"not null;default:1"`
+	Position  int  `gorm:"not null;default:1"`
+	IsPrimary bool `gorm:"not null;default:false"`
 
 	// снимок итога по строке при завершении заявки (NULL — до завершения)
 	RemainingKmDB      *float64 `gorm:"column:remaining_km"`
@@ -144,7 +144,7 @@ type ApplicationService struct {
 	EffectiveResourceKm float64 `gorm:"-"` // base_resource * k
 }
 
-func (ApplicationService) TableName() string { return "brake_wear" }
+func (ApplicationService) TableName() string { return "brake-pad-wear" }
 
 // =====================
 // ORM-ОПЕРАЦИИ (4 контроллера через ORM используют эти методы)
@@ -358,7 +358,7 @@ func computeLineWearIntoItem(it *ApplicationService, coef, mileage float64) {
 	it.RemainingPercent = pct
 }
 
-// applyWearResults — остаточный ресурс по строкам: для completed берётся снимок из brake_wear,
+// applyWearResults — остаточный ресурс по строкам: для completed берётся снимок из brake_pad_wear,
 // иначе считается по пробегу и стилю вождения.
 func (r *Repository) applyWearResults(app *Application) {
 	coef := drivingStyleCoef(app.DrivingStyle)
@@ -397,7 +397,7 @@ func (r *Repository) applyWearResults(app *Application) {
 	app.MinRemainingPercent = minPct
 }
 
-// persistBrakeWearResults — записать в brake_wear итог по каждой строке (при завершении заявки).
+// persistBrakeWearResults — записать в brake_pad_wear итог по каждой строке (при завершении заявки).
 func (r *Repository) persistBrakeWearResults(appID uint) error {
 	var app Application
 	if err := r.DB.Preload("Items.Service").First(&app, appID).Error; err != nil {
@@ -455,7 +455,7 @@ func (r *Repository) AddServiceToDraft(userID, serviceID uint, qty int) (*Applic
 		if err := tx.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "application_id"}, {Name: "service_id"}},
 			DoUpdates: clause.Assignments(map[string]any{
-				"quantity": gorm.Expr("brake_wear.quantity + EXCLUDED.quantity"),
+				"quantity": gorm.Expr("\"brake-pad-wear\".quantity + EXCLUDED.quantity"),
 			}),
 		}).Create(&item).Error; err != nil {
 			return err

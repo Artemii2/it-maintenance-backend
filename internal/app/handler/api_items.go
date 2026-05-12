@@ -9,10 +9,10 @@ import (
 )
 
 // =====================
-// REST API (лаб.3) — домен m-m заявки-услуги (таблица brake_wear)
+// REST API (лаб.3) — домен m-m заявки-услуги (таблица brake_pad_wear)
 // =====================
 
-// ApiDeleteApplicationItem — DELETE /api/brake-pad-wear/:id/items/:serviceId
+// ApiDeleteApplicationItem — DELETE /api/brake-wear/:id/items/:serviceId
 func (h *Handler) ApiDeleteApplicationItem(ctx *gin.Context) {
 	userID, err := userIDFromCtx(ctx)
 	if err != nil {
@@ -39,7 +39,7 @@ type updateItemRequest struct {
 	IsPrimary *bool `json:"is_primary"`
 }
 
-// ApiUpdateApplicationItem — PUT /api/brake-pad-wear/:id/items/:serviceId
+// ApiUpdateApplicationItem — PUT /api/brake-wear/:id/items/:serviceId
 func (h *Handler) ApiUpdateApplicationItem(ctx *gin.Context) {
 	userID, err := userIDFromCtx(ctx)
 	if err != nil {
@@ -68,4 +68,3 @@ func (h *Handler) ApiUpdateApplicationItem(ctx *gin.Context) {
 	}
 	ctx.Status(http.StatusNoContent)
 }
-

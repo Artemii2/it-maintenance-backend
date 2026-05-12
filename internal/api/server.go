@@ -7,9 +7,9 @@ import (
 	"web_backend/internal/app/repository"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"github.com/sirupsen/logrus"
 
 	_ "web_backend/docs"
 )
@@ -65,8 +65,8 @@ func StartServer() {
 	// новые человекочитаемые URL под тему brake pad
 	r.GET("/brake-pad/:id", h.GetService)
 	r.GET("/applications", h.GetApplicationsList)
-	r.GET("/brake-pad-wear/:id", h.GetApplication)
-	r.POST("/brake-pad-wear/:id/recalc", h.RecalcWear)
+	r.GET("/brake-wear/:id", h.GetApplication)
+	r.POST("/brake-wear/:id/recalc", h.RecalcWear)
 	// старые URL тоже оставляем, чтобы не ломать старые ссылки
 	r.GET("/services/:id", h.GetService)
 	r.GET("/applications/:id", h.GetApplication)
@@ -82,6 +82,8 @@ func StartServer() {
 
 		api.GET("/brake-pad", h.ApiGetServices)
 		api.GET("/brake-pad/:id", h.ApiGetService)
+		api.GET("/brake-wear/cart", h.ApiGetCartIcon)
+		api.GET("/brake-wear/cart-icon", h.ApiGetCartIcon)
 
 		// Авторизованный пользователь
 		authorized := api.Group("/")
@@ -89,22 +91,21 @@ func StartServer() {
 		authorized.POST("/auth/logout", h.ApiLogout)
 
 		authorized.POST("/brake-pad", h.ApiCreateService)
-		authorized.GET("/brake-pad-wear/cart-icon", h.ApiGetCartIcon)
-		authorized.POST("/brake-pad-wear/cart/items", h.ApiAddToCart)
+		authorized.POST("/brake-wear/cart/items", h.ApiAddToCart)
 
-		authorized.GET("/brake-pad-wear", h.ApiGetApplications)
-		authorized.GET("/brake-pad-wear/:id", h.ApiGetApplication)
-		authorized.PUT("/brake-pad-wear/:id", h.ApiUpdateApplication)
-		authorized.DELETE("/brake-pad-wear/:id", h.ApiDeleteApplication)
+		authorized.GET("/brake-wear", h.ApiGetApplications)
+		authorized.GET("/brake-wear/:id", h.ApiGetApplication)
+		authorized.PUT("/brake-wear/:id", h.ApiUpdateApplication)
+		authorized.DELETE("/brake-wear/:id", h.ApiDeleteApplication)
 
-		authorized.PUT("/brake-pad-wear/:id/items/:serviceId", h.ApiUpdateApplicationItem)
-		authorized.DELETE("/brake-pad-wear/:id/items/:serviceId", h.ApiDeleteApplicationItem)
+		authorized.PUT("/brake-wear/:id/items/:serviceId", h.ApiUpdateApplicationItem)
+		authorized.DELETE("/brake-wear/:id/items/:serviceId", h.ApiDeleteApplicationItem)
 
 		// Только модератор
 		moderator := authorized.Group("/")
 		moderator.Use(h.RequireModerator())
-		moderator.PUT("/brake-pad-wear/:id/finish", h.ApiFinishApplication)
-		moderator.PUT("/brake-pad-wear/:id/reject", h.ApiRejectApplication)
+		moderator.PUT("/brake-wear/:id/finish", h.ApiFinishApplication)
+		moderator.PUT("/brake-wear/:id/reject", h.ApiRejectApplication)
 	}
 
 	// слушаем на всех интерфейсах, чтобы можно было открыть с телефона

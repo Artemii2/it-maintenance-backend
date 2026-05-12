@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/pressly/goose/v3"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
@@ -60,11 +60,11 @@ func verifyCoreSchema(db *sql.DB) error {
 	if !ok {
 		return fmt.Errorf(`таблица "brake-pad" отсутствует, хотя миграции goose помечены выполненными — схема БД не совпадает с проектом. Сбросьте данные Postgres и примените миграции заново, например: docker compose down -v && docker compose up -d postgres, затем перезапустите приложение`)
 	}
-	if err := db.QueryRow(`SELECT to_regclass('public."brake-pad-wear"') IS NOT NULL`).Scan(&ok); err != nil {
+	if err := db.QueryRow(`SELECT to_regclass('public."brake-wear"') IS NOT NULL`).Scan(&ok); err != nil {
 		return fmt.Errorf("schema check: %w", err)
 	}
 	if !ok {
-		return fmt.Errorf(`таблица "brake-pad-wear" отсутствует — выполните полный прогон миграций на чистой БД (см. сообщение выше про docker compose down -v)`)
+		return fmt.Errorf(`таблица "brake-wear" отсутствует — выполните полный прогон миграций на чистой БД (см. сообщение выше про docker compose down -v)`)
 	}
 	return nil
 }
@@ -99,4 +99,3 @@ func getenv(key, fallback string) string {
 	}
 	return fallback
 }
-

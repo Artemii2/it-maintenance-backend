@@ -41,7 +41,7 @@
 
     <section class="wear-section">
         <h2 class="wear-section__title">Изменить параметры расчёта</h2>
-        <form id="wear-recalc-form" method="POST" action="/brake-pad-wear/{{ .app.ID }}/recalc">
+        <form id="wear-recalc-form" method="POST" action="/brake-wear/{{ .app.ID }}/recalc">
             <div class="wear-form-row">
                 <label for="wear-mileage">Пробег, км</label>
                 <input id="wear-mileage" type="number" name="mileage" min="0" step="1"
